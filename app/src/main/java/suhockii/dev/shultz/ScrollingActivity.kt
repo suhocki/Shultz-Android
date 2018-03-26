@@ -1,10 +1,9 @@
 package suhockii.dev.shultz
 
 import android.os.Bundle
-import android.support.design.widget.Snackbar
 import android.support.v7.app.AppCompatActivity
 import android.view.Menu
-import android.view.MenuItem
+import android.view.View
 import kotlinx.android.synthetic.main.activity_scrolling.*
 
 class ScrollingActivity : AppCompatActivity() {
@@ -13,27 +12,46 @@ class ScrollingActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_scrolling)
         setSupportActionBar(toolbar)
-        fab.setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                    .setAction("Action", null).show()
-        }
+        title = ""
+
+        fab_shultz.setOnClickListener {}
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        menuInflater.inflate(R.menu.menu_scrolling, menu)
+    override fun onCreateOptionsMenu(menu: Menu): Boolean = onLayoutVisible()
+
+    private fun onLayoutVisible(): Boolean {
+        setCollapsingToolbarListener()
         return true
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
+    private fun setCollapsingToolbarListener() {
+        val fabYStart = fab_shultz.y
+        val fabStartElevation = fab_shultz.elevation
 
-        return when (item.itemId) {
-            R.id.action_settings ->
-                return true
-            else -> super.onOptionsItemSelected(item)
+        app_bar.addOnOffsetChangedListener { appBar, verticalOffset ->
+            fab_shultz.y = fabYStart - (verticalOffset / 2)
+            val collapsedPercent = Math.abs(verticalOffset.toFloat() / appBar.totalScrollRange)
+
+            with(fab_shultz) {
+                elevation = fabStartElevation * getFabDelta(collapsedPercent)
+            }
+        }
+
+        app_bar.addOnOffsetChangedListener(AppBarStateChangeListener { state ->
+            iv_shultz.visibility = if (state == AppBarStateChangeListener.COLLAPSED) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+        })
+    }
+
+    private fun getFabDelta(collapsedPercent: Float): Float {
+        val delta = 1 - collapsedPercent
+        return if (delta > 1 / 2f) {
+            1f
+        } else {
+            delta*delta * 2f
         }
     }
 }
