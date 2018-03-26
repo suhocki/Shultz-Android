@@ -5,10 +5,10 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/colorPrimary"
-    tools:context="suhockii.dev.shultz.ScrollingActivity">
+    tools:context="suhockii.dev.shultz.ui.ScrollingActivity">
 
     <android.support.design.widget.AppBarLayout
-        android:id="@+id/app_bar"
+        android:id="@+id/appBar"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_marginBottom="156dp"
@@ -29,32 +29,22 @@
                 android:paddingEnd="16dp"
                 app:layout_collapseMode="pin"
                 app:popupTheme="@style/AppTheme.PopupOverlay"
-                tools:ignore="RtlSymmetry">
-
-                <ImageView
-                    android:id="@+id/iv_shultz"
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:padding="4dp"
-                    android:visibility="gone"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/shultz" />
-
-            </android.support.v7.widget.Toolbar>
+                tools:ignore="RtlSymmetry" />
 
             <android.support.design.widget.FloatingActionButton
-                android:id="@+id/fab_shultz"
+                android:id="@+id/fabShultz"
                 android:layout_width="128dp"
                 android:layout_height="128dp"
                 android:layout_gravity="center"
                 android:src="@drawable/shultz"
-                app:backgroundTint="@color/colorPrimary" />
+                app:backgroundTint="@color/colorPrimary"
+                app:elevation="@dimen/fab_elevation"
+                app:rippleColor="@color/colorPrimaryDark" />
 
         </android.support.design.widget.CollapsingToolbarLayout>
 
     </android.support.design.widget.AppBarLayout>
 
     <include layout="@layout/content_scrolling" />
-
 
 </android.support.design.widget.CoordinatorLayout>
