@@ -2,50 +2,77 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/flInit"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:layout_marginLeft="56dp"
-    android:id="@+id/flInit"
     android:focusableInTouchMode="true"
-    android:layout_marginRight="56dp"
     tools:context="suhockii.dev.shultz.ui.InitActivity">
 
     <ScrollView
         android:id="@+id/svInit"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:scrollbars="none">
+        android:layout_height="match_parent">
 
         <LinearLayout
+            android:id="@+id/llInit"
+            android:paddingLeft="56dp"
+            android:paddingRight="56dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="56dp"
+            android:layout_gravity="center"
             android:orientation="vertical">
 
             <EditText
                 android:id="@+id/etLogin"
                 android:layout_width="match_parent"
-                android:layout_height="82dp"
-                android:layout_marginTop="56dp"
+                android:layout_height="62dp"
+                android:layout_marginTop="16dp"
                 android:backgroundTint="@android:color/darker_gray"
                 android:gravity="center"
                 android:hint="Логин"
                 android:inputType="textShortMessage"
                 android:textCursorDrawable="@android:color/darker_gray"
-                android:textSize="28dp" />
+                android:textSize="26dp" />
 
-            <android.support.design.widget.FloatingActionButton
-                android:id="@+id/fabShultz"
-                android:layout_width="128dp"
-                android:layout_height="128dp"
-                android:layout_gravity="center"
-                android:layout_marginBottom="16dp"
-                android:src="@drawable/shultz"
-                app:backgroundTint="@color/colorPrimary"
-                app:elevation="@dimen/fab_elevation"
-                app:rippleColor="@color/colorPrimaryDark"
-                app:useCompatPadding="true" />
+            <EditText
+                android:id="@+id/etPassword"
+                android:layout_width="match_parent"
+                android:layout_height="62dp"
+                android:backgroundTint="@android:color/darker_gray"
+                android:gravity="center"
+                android:hint="Пароль"
+                android:inputType="textVisiblePassword"
+                android:textCursorDrawable="@android:color/darker_gray"
+                android:textSize="26dp" />
+
+            <FrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center">
+
+                <ProgressBar
+                    android:id="@+id/progressBar"
+                    android:layout_width="160dp"
+                    android:layout_height="160dp"
+                    android:layout_gravity="center"
+                    android:indeterminate="false"
+                    android:indeterminateTint="@android:color/darker_gray"
+                    android:visibility="invisible"
+                    tools:visibility="visible" />
+
+                <android.support.design.widget.FloatingActionButton
+                    android:id="@+id/fabShultz"
+                    android:layout_width="128dp"
+                    android:layout_height="128dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/shultz"
+                    app:backgroundTint="@color/colorPrimary"
+                    app:elevation="@dimen/fab_elevation"
+                    app:rippleColor="@color/colorPrimaryDark"
+                    app:useCompatPadding="true" />
+
+
+            </FrameLayout>
         </LinearLayout>
 
     </ScrollView>

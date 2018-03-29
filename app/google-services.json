@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "330816921491",
+    "firebase_url": "https://shultz-manager.firebaseio.com",
+    "project_id": "shultz-manager",
+    "storage_bucket": "shultz-manager.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:330816921491:android:36ceb04736e664b1",
+        "android_client_info": {
+          "package_name": "suhockii.dev.shultz"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "330816921491-i73ilc3qe1vsgoodht1hfah0fsnp5d9t.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "suhockii.dev.shultz",
+            "certificate_hash": "856e4207bcaf23800316d16f56a753f4d19570a4"
+          }
+        },
+        {
+          "client_id": "330816921491-22l6nle9r0tui3nnubatish2riei3jo9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyARXzK5TUcX48ne3JnRWZFllSdPcF6ydOk"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "330816921491-22l6nle9r0tui3nnubatish2riei3jo9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

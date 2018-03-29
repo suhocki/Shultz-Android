@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">Shultz</string>
+    <string name="check_internet">Check Internet connection</string>
+    <string name="firebase_token_received">Firebase token received successfully</string>
     <string name="large_text">
         "Material is the metaphor.\n\n"
 

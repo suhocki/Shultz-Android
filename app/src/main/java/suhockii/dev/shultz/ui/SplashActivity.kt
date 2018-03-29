@@ -1,27 +1,21 @@
 package suhockii.dev.shultz.ui
 
-import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
+import suhockii.dev.shultz.Common
+import suhockii.dev.shultz.util.startActivity
 
 
 class SplashActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val sharedPref = getPreferences(Context.MODE_PRIVATE)
-        val clazz = if (sharedPref.getString(PREF_ID, null) == null) {
-            InitActivity::class
+        val token = Common.sharedPreferences.token
+        if (token == null) {
+            startActivity<InitActivity>()
         } else {
-            ScrollingActivity::class
+            startActivity<ScrollingActivity>("token" to token)
         }
-        val intent = Intent(this, clazz.java)
-        startActivity(intent)
         finish()
-    }
-
-    companion object {
-        const val PREF_ID: String = "id"
     }
 }

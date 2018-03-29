@@ -3,4 +3,6 @@
     <color name="colorPrimary">#FAFAFA</color>
     <color name="colorPrimaryDark">#E0E0E0</color>
     <color name="colorAccent">#FFFFFF</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <color name="notification">#FFaaFF</color>
 </resources>
