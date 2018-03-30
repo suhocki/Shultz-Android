@@ -6,10 +6,10 @@ import android.content.Intent
 import android.net.ConnectivityManager
 import android.os.Bundle
 import android.os.Parcelable
+import android.view.animation.Animation
+import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import java.io.Serializable
-
-
 
 
 fun Context.toast(message: CharSequence): Toast = Toast
@@ -56,8 +56,25 @@ inline fun <reified T : Activity> Context.startActivity(vararg params: Pair<Stri
             return@let intent
         })
 
-inline fun Context.isInternetConnected(): Boolean {
+fun Context.isInternetConnected(): Boolean {
     val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     val netInfo = cm.activeNetworkInfo
     return netInfo != null && netInfo.isConnectedOrConnecting
+}
+
+fun Activity.closeKeyboard() {
+    val view = this.currentFocus
+    if (view != null) {
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.hideSoftInputFromWindow(view.windowToken, 0)
+    }
+}
+
+fun Animation.withEndAction(action: () -> Unit) {
+    setAnimationListener(object : Animation.AnimationListener {
+        override fun onAnimationEnd(p0: Animation?) = action.invoke()
+        override fun onAnimationRepeat(p0: Animation?) {}
+        override fun onAnimationStart(p0: Animation?) {}
+
+    })
 }

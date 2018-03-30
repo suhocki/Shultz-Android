@@ -2,8 +2,11 @@
     <string name="shared_preferences_file_name">sharedPreferences</string>
     <string name="default_notification_channel_id">suhockii.dev.shultz.notifications</string>
     <string name="default_notification_channel_name">ShultzNotifications</string>
-    
+
     <string name="server_path">https://shultz.herokuapp.com</string>
-    
+
+    <string name="regex_login">^[a-zA-Z0-9]+([_ -]?[a-zA-Z0-9])*$</string>
+    <string name="regex_password">^(?=.*\d)[0-9a-zA-Z]{8,}$</string>
+
     <string name="extra_firebase_id">ShultzNotifications</string>
 </resources>

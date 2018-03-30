@@ -11,7 +11,7 @@ class SharedPreferences (context: Context) {
         get() = sharedPreferences.getString(PREFERENCE_FIREBASE_ID, null)
         set(value) = sharedPreferences.edit().putString(PREFERENCE_FIREBASE_ID, value).apply()
 
-    var antonToken: String?
+    var userToken: String?
         get() = sharedPreferences.getString(PREFERENCE_TOKEN, null)
         set(value) = sharedPreferences.edit().putString(PREFERENCE_TOKEN, value).apply()
 
