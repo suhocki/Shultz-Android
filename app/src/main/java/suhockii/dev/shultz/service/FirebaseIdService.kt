@@ -10,7 +10,7 @@ class FirebaseIdService : FirebaseInstanceIdService() {
 
     override fun onTokenRefresh() {
         val token = FirebaseInstanceId.getInstance().token!!
-        Common.sharedPreferences.firebaseId = token
+        Common.sharedPreferences.pushToken = token
         val activityHandler = Common.activityHandler
         val currentActivity = activityHandler.currentActivity
         if (currentActivity != null && currentActivity is FirebaseTokenActions) {

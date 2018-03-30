@@ -7,11 +7,11 @@ class SharedPreferences (context: Context) {
     private val sharedPreferences: SharedPreferences = context.getSharedPreferences(
             context.getString(R.string.shared_preferences_file_name), Context.MODE_PRIVATE)
 
-    var firebaseId: String?
+    var pushToken: String?
         get() = sharedPreferences.getString(PREFERENCE_FIREBASE_ID, null)
         set(value) = sharedPreferences.edit().putString(PREFERENCE_FIREBASE_ID, value).apply()
 
-    var token: String?
+    var antonToken: String?
         get() = sharedPreferences.getString(PREFERENCE_TOKEN, null)
         set(value) = sharedPreferences.edit().putString(PREFERENCE_TOKEN, value).apply()
 

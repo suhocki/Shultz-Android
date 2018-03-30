@@ -10,11 +10,11 @@ class SplashActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val token = Common.sharedPreferences.token
+        val token = Common.sharedPreferences.antonToken
         if (token == null) {
             startActivity<InitActivity>()
         } else {
-            startActivity<ScrollingActivity>("token" to token)
+            startActivity<ScrollingActivity>("antonToken" to token)
         }
         finish()
     }

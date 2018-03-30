@@ -1,8 +1,10 @@
 package suhockii.dev.shultz.ui
 
 import android.os.Bundle
-import android.support.v4.view.ViewCompat
+import android.os.Handler
 import android.support.v7.app.AppCompatActivity
+import android.transition.ChangeBounds
+import android.transition.TransitionManager
 import android.view.View
 import com.github.kittinunf.fuel.core.FuelError
 import com.github.kittinunf.fuel.core.Request
@@ -24,6 +26,7 @@ import java.io.InputStreamReader
 class InitActivity : AppCompatActivity(), KeyboardHeightObserver, FirebaseTokenActions {
 
     private lateinit var keyboardHeightProvider: KeyboardHeightProvider
+    private lateinit var firebaseInstanceId: FirebaseInstanceId
     private var networkRequest: Request? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,13 +34,37 @@ class InitActivity : AppCompatActivity(), KeyboardHeightObserver, FirebaseTokenA
         setContentView(R.layout.activity_init)
 
         keyboardHeightProvider = KeyboardHeightProvider(this)
-
+        firebaseInstanceId = FirebaseInstanceId.getInstance()
         flInit.post { keyboardHeightProvider.start() }
 
         fabShultz.setOnClickListener {
             sendInitRequest(listOf("name" to etLogin.text.toString(),
                     "pushToken" to FirebaseInstanceId.getInstance().token!!))
         }
+
+        ivRefreshToken.setOnClickListener {
+            tvFirebaseToken.text = getString(R.string.retrieving_firebase_token)
+            ivRefreshToken.visibility = View.GONE
+            TransitionManager.beginDelayedTransition(llFireBaseToken, ChangeBounds())
+            firebaseInstanceId.token.apply {
+                checkPushTokenDelayed()
+            }
+        }
+
+        if (Common.sharedPreferences.pushToken.isNullOrBlank()) {
+            tvFirebaseToken.text = getString(R.string.retrieving_firebase_token)
+            tvFirebaseToken.visibility = View.VISIBLE
+            checkPushTokenDelayed()
+        }
+
+    }
+
+    private fun checkPushTokenDelayed() {
+        Handler().postDelayed({
+            if (Common.sharedPreferences.pushToken.isNullOrBlank()) {
+                onTokenRefreshFailure()
+            }
+        }, 5000)
     }
 
     private fun sendInitRequest(parameters: List<Pair<String, String>>) {
@@ -52,7 +79,7 @@ class InitActivity : AppCompatActivity(), KeyboardHeightObserver, FirebaseTokenA
     }
 
     private fun onInitSuccess(initResponse: InitResponse) {
-        Common.sharedPreferences.token = initResponse._id
+        Common.sharedPreferences.antonToken = initResponse._id
         startActivity<ScrollingActivity>(getString(R.string.extra_firebase_id) to initResponse._id)
                 .also { finish() }
     }
@@ -81,12 +108,27 @@ class InitActivity : AppCompatActivity(), KeyboardHeightObserver, FirebaseTokenA
         keyboardHeightProvider.close()
     }
 
-    override fun onTokenRefreshed(): Unit = with(flInit) {
-        post { toast(getString(R.string.firebase_token_received)) }
+    override fun onTokenRefreshed(): Unit = with(tvFirebaseToken) {
+        post {
+            text = getString(R.string.firebase_token_retrieved)
+            animate().alpha(0f)
+                    .withEndAction { visibility = View.GONE }
+                    .startDelay = 2000
+            ivRefreshToken.visibility = View.GONE
+            TransitionManager.beginDelayedTransition(llFireBaseToken, ChangeBounds())
+        }
+    }
+
+    override fun onTokenRefreshFailure() {
+        tvFirebaseToken.text = getString(R.string.retrieving_firebase_token_failed)
+        ivRefreshToken.alpha = 0f
+        ivRefreshToken.visibility = View.VISIBLE
+        ivRefreshToken.animate().alpha(1f)
+        TransitionManager.beginDelayedTransition(llFireBaseToken, ChangeBounds())
     }
 
     override fun onKeyboardHeightChanged(height: Int, orientation: Int) {
-        ViewCompat.animate(llInit).translationY((-height / 2).toFloat())
+        llInit.animate().translationY((-height / 2).toFloat())
     }
 }
 
@@ -101,4 +143,5 @@ data class InitResponse(
 
 interface FirebaseTokenActions {
     fun onTokenRefreshed()
+    fun onTokenRefreshFailure()
 }
