@@ -6,7 +6,10 @@
     <string name="server_path">https://shultz.herokuapp.com</string>
 
     <string name="regex_login">^[a-zA-Z0-9]+([_ -]?[a-zA-Z0-9])*$</string>
-    <string name="regex_password">^(?=.*\d)[0-9a-zA-Z]{8,}$</string>
+    <string name="regex_password">^(?=.*\\d)[0-9a-zA-Z]{8,}$</string>
 
     <string name="extra_firebase_id">ShultzNotifications</string>
+
+    <string name="server_response_name_exists">This user name already exists.</string>
+    <string name="server_response_unauthorized">Unauthorized</string>
 </resources>

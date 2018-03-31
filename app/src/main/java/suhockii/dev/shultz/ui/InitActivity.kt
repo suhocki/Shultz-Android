@@ -25,12 +25,13 @@ import java.io.ByteArrayInputStream
 import java.io.InputStreamReader
 
 
-class InitActivity : AppCompatActivity(), KeyboardHeightObserver, FirebaseTokenActions {
+class InitActivity : AppCompatActivity(), KeyboardHeightObserver, PushTokenActions {
 
     private lateinit var keyboardHeightProvider: KeyboardHeightProvider
     private lateinit var firebaseInstanceId: FirebaseInstanceId
     private lateinit var shakeAnimation: Animation
-    private var checkPushTokenDelayed = async{}
+    private lateinit var loginParameters: List<Pair<String, String>>
+    private var checkPushTokenDelayed = async {}
     private var networkRequest: Request? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,10 +52,13 @@ class InitActivity : AppCompatActivity(), KeyboardHeightObserver, FirebaseTokenA
             val login = etLogin.text.toString()
             val password = etPassword.text.toString()
             if (isPushTokenRetrieved() && isUserInputValid(login, password)) {
-                sendInitRequest(listOf(
-                        "name" to login,
+                loginParameters = listOf("name" to login,
                         "password" to password,
-                        "pushToken" to Common.sharedPreferences.pushToken!!))
+                        "pushToken" to Common.sharedPreferences.pushToken!!)
+                etFocusable.requestFocus()
+                etLogin.isEnabled = false
+                etPassword.isEnabled = false
+                sendInitRequest()
             }
         }
 
@@ -76,12 +80,20 @@ class InitActivity : AppCompatActivity(), KeyboardHeightObserver, FirebaseTokenA
     private fun isPushTokenRetrieved(): Boolean =
             if (checkPushTokenDelayed.isActive ||
                     Common.sharedPreferences.pushToken.isNullOrBlank()) {
-                onTokenRefreshFailed()
+                onPushTokenRefreshFailed()
                 closeKeyboard()
                 false
             } else {
                 true
             }
+
+    private fun sendInitRequest() {
+        progressBar.visibility = View.VISIBLE
+        networkRequest?.cancel()
+        networkRequest = "init/".httpPost(loginParameters).response { _, _, result ->
+            result.fold({ onInitSuccess() }, { onInitFailure(it) })
+        }
+    }
 
     private fun isUserInputValid(login: String, password: String): Boolean {
         val redColor = ResourcesCompat.getColor(resources, R.color.colorRed, theme)
@@ -99,25 +111,56 @@ class InitActivity : AppCompatActivity(), KeyboardHeightObserver, FirebaseTokenA
         return isAllValid
     }
 
-    private fun sendInitRequest(parameters: List<Pair<String, String>>) {
-        networkRequest?.cancel()
-        progressBar.visibility = View.VISIBLE
-        "init/".httpPost(parameters).responseObject(InitResponse.Deserializer()) { _, _, result ->
-            progressBar.visibility = View.INVISIBLE
-            result.fold({ onInitSuccess(it) }, { onInitFailure(it) })
-        }.let { networkRequest = it }
+    private fun onInitSuccess() {
+        sendSignInRequest()
     }
 
-    private fun onInitSuccess(initResponse: InitResponse) {
-        Common.sharedPreferences.userToken = initResponse._id
-        startActivity<ScrollingActivity>(getString(R.string.extra_firebase_id) to initResponse._id)
+    private fun onInitFailure(fuelError: FuelError) {
+        val data = fuelError.response.data
+        if (data.isNotEmpty()) {
+            val serverMessage = InputStreamReader(ByteArrayInputStream(data)).readLines().first()
+            if (serverMessage == getString(R.string.server_response_name_exists)) {
+                sendSignInRequest()
+                return
+            } else {
+                toast(serverMessage)
+            }
+        } else {
+            toast(getString(R.string.check_internet))
+        }
+        progressBar.visibility = View.INVISIBLE
+        etLogin.isEnabled = true
+        etPassword.isEnabled = true
+        etLogin.requestFocus()
+    }
+
+    private fun sendSignInRequest() {
+        "signin/".httpPost(loginParameters).responseObject(SignInResponse.Deserializer()) { _, _, result ->
+            progressBar.visibility = View.INVISIBLE
+            result.fold({ onSignInSuccess(it) }, { onSignInFailure(it) })
+        }
+    }
+
+    private fun onSignInSuccess(signInResponse: SignInResponse) {
+        Common.sharedPreferences.userToken = signInResponse.token
+        startActivity<ScrollingActivity>(getString(R.string.extra_firebase_id) to signInResponse.token)
                 .also { finish() }
     }
 
-    private fun onInitFailure(error: FuelError?) {
-        val data = error?.response?.data
-        if (data?.isNotEmpty() == true) {
-            toast(InputStreamReader(ByteArrayInputStream(data)).readLines().first())
+    private fun onSignInFailure(fuelError: FuelError) {
+        etLogin.isEnabled = true
+        etPassword.isEnabled = true
+        etPassword.requestFocus()
+        val data = fuelError.response.data
+        if (data.isNotEmpty()) {
+            val serverMessage = InputStreamReader(ByteArrayInputStream(data)).readLines().first()
+            if (serverMessage == getString(R.string.server_response_unauthorized)) {
+                etPassword.startAnimation(shakeAnimation)
+                val redColor = ResourcesCompat.getColor(resources, R.color.colorRed, theme)
+                etPassword.background.mutate().setColorFilter(redColor, PorterDuff.Mode.SRC_ATOP)
+            } else {
+                toast(serverMessage)
+            }
         } else {
             toast(getString(R.string.check_internet))
         }
@@ -129,7 +172,7 @@ class InitActivity : AppCompatActivity(), KeyboardHeightObserver, FirebaseTokenA
             tvFirebaseToken.text = getString(R.string.retrieving_firebase_token)
             tvFirebaseToken.visibility = View.VISIBLE
             checkPushTokenDelayed = async {
-                delay(3000)
+                delay(9000)
                 runOnUiThread { isPushTokenRetrieved() }
             }
         }
@@ -150,19 +193,19 @@ class InitActivity : AppCompatActivity(), KeyboardHeightObserver, FirebaseTokenA
         keyboardHeightProvider.close()
     }
 
-    override fun onTokenRefreshed() {
+    override fun onPushTokenRefreshed() {
         runOnUiThread {
             checkPushTokenDelayed.cancel()
             tvFirebaseToken.text = getString(R.string.firebase_token_retrieved)
             tvFirebaseToken.animate().alpha(0f)
                     .withEndAction { tvFirebaseToken.visibility = View.GONE }
-                    .startDelay = 2000
+                    .startDelay = 3000
             ivRefreshToken.visibility = View.GONE
             TransitionManager.beginDelayedTransition(llFireBaseToken, ChangeBounds())
         }
     }
 
-    override fun onTokenRefreshFailed() {
+    override fun onPushTokenRefreshFailed() {
         val retrieveFailedRes = getString(R.string.retrieving_firebase_token_failed)
         if (tvFirebaseToken.text.toString() == retrieveFailedRes) {
             return
@@ -179,16 +222,14 @@ class InitActivity : AppCompatActivity(), KeyboardHeightObserver, FirebaseTokenA
     }
 }
 
-data class InitResponse(
-        val _id: String,
-        val name: String
-) {
-    class Deserializer : ResponseDeserializable<InitResponse> {
-        override fun deserialize(content: String) = Gson().fromJson(content, InitResponse::class.java)!!
+data class SignInResponse(val token: String) {
+    class Deserializer : ResponseDeserializable<SignInResponse> {
+        override fun deserialize(content: String) =
+                Gson().fromJson(content, SignInResponse::class.java)!!
     }
 }
 
-interface FirebaseTokenActions {
-    fun onTokenRefreshed()
-    fun onTokenRefreshFailed()
+interface PushTokenActions {
+    fun onPushTokenRefreshed()
+    fun onPushTokenRefreshFailed()
 }
