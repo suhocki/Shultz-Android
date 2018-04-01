@@ -15,7 +15,7 @@
         android:theme="@style/AppTheme.AppBarOverlay">
 
         <android.support.design.widget.CollapsingToolbarLayout
-            android:id="@+id/toolbar_layout"
+            android:id="@+id/collapsingToolbar"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             app:layout_scrollFlags="scroll|exitUntilCollapsed"
@@ -30,15 +30,39 @@
                 app:popupTheme="@style/AppTheme.PopupOverlay"
                 tools:ignore="RtlSymmetry" />
 
-            <android.support.design.widget.FloatingActionButton
-                android:id="@+id/fabShultz"
-                android:layout_width="128dp"
-                android:layout_height="128dp"
-                android:layout_gravity="center"
-                android:src="@drawable/shultz"
-                app:backgroundTint="@color/colorPrimary"
-                app:elevation="@dimen/fab_elevation"
-                app:rippleColor="@color/colorPrimaryDark" />
+            <FrameLayout
+                android:id="@+id/flShultz"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center">
+
+                <ProgressBar
+                    android:id="@+id/progressBar"
+                    android:layout_width="160dp"
+                    android:layout_height="160dp"
+                    android:progressDrawable="@drawable/circular_progress_bar"
+                    android:background="@drawable/circle_shape"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:max="100"
+                    android:progress="0"
+                    android:layout_gravity="center"
+                    android:indeterminate="false"
+                    android:indeterminateTint="@android:color/darker_gray"
+                    tools:visibility="visible" />
+
+                <android.support.design.widget.FloatingActionButton
+                    android:id="@+id/fabShultz"
+                    android:layout_width="128dp"
+                    android:layout_height="128dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/shultz"
+                    app:backgroundTint="@color/colorPrimary"
+                    app:elevation="@dimen/fab_elevation"
+                    app:rippleColor="@color/colorPrimaryDark"
+                    app:useCompatPadding="true" />
+
+            </FrameLayout>
+
 
         </android.support.design.widget.CollapsingToolbarLayout>
 

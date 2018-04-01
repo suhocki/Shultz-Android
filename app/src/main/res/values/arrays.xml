@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="shultz_types">
+        <item>Whisper</item>
+        <item>Like a girl</item>
+        <item>Default</item>
+        <item>Shultz</item>
+        <item>Skurchik</item>
+        <item>AlcoShultz</item>
+    </string-array>
+</resources>

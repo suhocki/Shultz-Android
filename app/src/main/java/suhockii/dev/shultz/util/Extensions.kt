@@ -1,14 +1,21 @@
 package suhockii.dev.shultz.util
 
+import android.animation.Animator
+import android.animation.ObjectAnimator
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.os.Bundle
 import android.os.Parcelable
+import android.view.MotionEvent
+import android.view.View
 import android.view.animation.Animation
+import android.view.animation.DecelerateInterpolator
 import android.view.inputmethod.InputMethodManager
+import android.widget.ProgressBar
 import android.widget.Toast
+import kotlinx.coroutines.experimental.Deferred
 import java.io.Serializable
 
 
@@ -72,9 +79,42 @@ fun Activity.closeKeyboard() {
 
 fun Animation.withEndAction(action: () -> Unit) {
     setAnimationListener(object : Animation.AnimationListener {
-        override fun onAnimationEnd(p0: Animation?) = action.invoke()
         override fun onAnimationRepeat(p0: Animation?) {}
         override fun onAnimationStart(p0: Animation?) {}
+        override fun onAnimationEnd(p0: Animation?) = action.invoke()
 
     })
+}
+
+fun ObjectAnimator.withEndAction(action: () -> Unit) {
+    this.addListener(object : Animator.AnimatorListener {
+        override fun onAnimationRepeat(p0: Animator?) {}
+        override fun onAnimationCancel(p0: Animator?) {}
+        override fun onAnimationStart(p0: Animator?) {}
+        override fun onAnimationEnd(p0: Animator?) = action.invoke()
+
+    })
+}
+
+fun ProgressBar.animateProgressTo(progressTo: Int, progressDeferred: Deferred<Unit>) {
+    val animation = ObjectAnimator.ofInt(this, "progress", this.progress, progressTo)
+    animation.duration = 200
+    animation.interpolator = DecelerateInterpolator()
+    animation.withEndAction {
+        if (progressDeferred.isCancelled) {
+            progress = 0
+        }
+    }
+    animation.start()
+}
+
+fun View.setInTouchListener(inTouch: () -> Unit, released: () -> Unit) {
+    setOnTouchListener { v: View, motionEvent: MotionEvent ->
+        when (motionEvent.action) {
+            MotionEvent.ACTION_DOWN -> inTouch.invoke()
+            MotionEvent.ACTION_UP -> released.invoke()
+            MotionEvent.ACTION_CANCEL -> released.invoke()
+        }
+        return@setOnTouchListener true
+    }
 }
