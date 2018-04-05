@@ -8,6 +8,7 @@ import android.content.Intent
 import android.net.ConnectivityManager
 import android.os.Bundle
 import android.os.Parcelable
+import android.support.design.widget.AppBarLayout
 import android.view.MotionEvent
 import android.view.View
 import android.view.animation.Animation
@@ -15,7 +16,6 @@ import android.view.animation.DecelerateInterpolator
 import android.view.inputmethod.InputMethodManager
 import android.widget.ProgressBar
 import android.widget.Toast
-import kotlinx.coroutines.experimental.Deferred
 import java.io.Serializable
 
 
@@ -96,25 +96,49 @@ fun ObjectAnimator.withEndAction(action: () -> Unit) {
     })
 }
 
-fun ProgressBar.animateProgressTo(progressTo: Int, progressDeferred: Deferred<Unit>) {
+fun ProgressBar.animateProgressTo(progressTo: Int): ObjectAnimator {
     val animation = ObjectAnimator.ofInt(this, "progress", this.progress, progressTo)
-    animation.duration = 200
+    animation.duration = 300
     animation.interpolator = DecelerateInterpolator()
-    animation.withEndAction {
-        if (progressDeferred.isCancelled) {
-            progress = 0
-        }
-    }
     animation.start()
+    return animation
 }
 
 fun View.setInTouchListener(inTouch: () -> Unit, released: () -> Unit) {
-    setOnTouchListener { v: View, motionEvent: MotionEvent ->
+    setOnTouchListener { _, motionEvent ->
         when (motionEvent.action) {
             MotionEvent.ACTION_DOWN -> inTouch.invoke()
-            MotionEvent.ACTION_UP -> released.invoke()
+            MotionEvent.ACTION_UP -> {
+                performClick()
+                released.invoke()
+            }
             MotionEvent.ACTION_CANCEL -> released.invoke()
         }
         return@setOnTouchListener true
+    }
+}
+
+fun AppBarLayout.addCollapsingListener(updateState: (collapsed: Boolean) -> Unit) {
+    val expandedState = 0
+    val collapsedState = 1
+    val idleState = 2
+    var mCurrentState = idleState
+    addOnOffsetChangedListener { appBarLayout, i ->
+        if (i == 0) {
+            if (mCurrentState != expandedState) {
+                updateState(false)
+            }
+            mCurrentState = expandedState
+        } else if (Math.abs(i) >= appBarLayout.totalScrollRange) {
+            if (mCurrentState != collapsedState) {
+                updateState(true)
+            }
+            mCurrentState = collapsedState
+        } else {
+            if (mCurrentState != idleState) {
+                updateState(false)
+            }
+            mCurrentState = idleState
+        }
     }
 }

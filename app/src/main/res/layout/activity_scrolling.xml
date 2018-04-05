@@ -7,6 +7,34 @@
     android:background="@color/colorPrimary"
     tools:context="suhockii.dev.shultz.ui.ScrollingActivity">
 
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:elevation="@dimen/fab_elevation"
+        android:layout_height="56dp">
+
+        <ProgressBar
+            android:id="@+id/progressBarHorizontal"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="12dp"
+            android:layout_gravity="bottom"
+            android:indeterminate="false"
+            android:max="100"
+            android:progress="0"
+            android:progressDrawable="@drawable/horizontal_progress_bar"
+            tools:progress="33"
+            tools:visibility="visible" />
+
+        <ImageView
+            android:id="@+id/ivProgressBarHorizontalMask"
+            android:layout_width="match_parent"
+            android:layout_height="12dp"
+            android:layout_gravity="bottom"
+            android:scaleType="fitXY"
+            android:src="@drawable/mask_progress_horizontal" />
+
+    </FrameLayout>
+
     <android.support.design.widget.AppBarLayout
         android:id="@+id/appBar"
         android:layout_width="match_parent"
@@ -25,10 +53,8 @@
                 android:id="@+id/toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
-                android:paddingEnd="16dp"
                 app:layout_collapseMode="pin"
-                app:popupTheme="@style/AppTheme.PopupOverlay"
-                tools:ignore="RtlSymmetry" />
+                app:popupTheme="@style/AppTheme.PopupOverlay" />
 
             <FrameLayout
                 android:id="@+id/flShultz"
@@ -36,31 +62,38 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center">
 
-                <ProgressBar
-                    android:id="@+id/progressBar"
-                    android:layout_width="160dp"
-                    android:layout_height="160dp"
-                    android:progressDrawable="@drawable/circular_progress_bar"
-                    android:background="@drawable/circle_shape"
-                    style="?android:attr/progressBarStyleHorizontal"
-                    android:max="100"
-                    android:progress="0"
-                    android:layout_gravity="center"
-                    android:indeterminate="false"
-                    android:indeterminateTint="@android:color/darker_gray"
-                    tools:visibility="visible" />
-
                 <android.support.design.widget.FloatingActionButton
                     android:id="@+id/fabShultz"
-                    android:layout_width="128dp"
-                    android:layout_height="128dp"
+                    android:layout_width="@dimen/fab_width"
+                    android:layout_height="@dimen/fab_width"
                     android:layout_gravity="center"
+                    android:scaleType="fitCenter"
                     android:src="@drawable/shultz"
                     app:backgroundTint="@color/colorPrimary"
                     app:elevation="@dimen/fab_elevation"
                     app:rippleColor="@color/colorPrimaryDark"
                     app:useCompatPadding="true" />
 
+                <ProgressBar
+                    android:id="@+id/progressBarCircle"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="@dimen/fab_width"
+                    android:layout_height="@dimen/fab_width"
+                    android:layout_gravity="center"
+                    android:elevation="@dimen/fab_elevation"
+                    android:indeterminate="false"
+                    android:max="100"
+                    android:progress="0"
+                    android:progressDrawable="@drawable/circular_progress_bar"
+                    tools:progress="33"
+                    tools:visibility="visible" />
+
+                <ImageView
+                    android:layout_width="@dimen/fab_width"
+                    android:layout_height="@dimen/fab_width"
+                    android:layout_gravity="center"
+                    android:elevation="@dimen/fab_elevation"
+                    android:src="@drawable/mask_progress_rounded" />
             </FrameLayout>
 
 

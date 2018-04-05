@@ -88,7 +88,7 @@ class InitActivity : AppCompatActivity(), KeyboardHeightObserver, PushTokenActio
             }
 
     private fun sendInitRequest() {
-        progressBar.visibility = View.VISIBLE
+        progressBarCircle.visibility = View.VISIBLE
         networkRequest?.cancel()
         networkRequest = "init/".httpPost(loginParameters).response { _, _, result ->
             result.fold({ onInitSuccess() }, { onInitFailure(it) })
@@ -128,7 +128,7 @@ class InitActivity : AppCompatActivity(), KeyboardHeightObserver, PushTokenActio
         } else {
             toast(getString(R.string.check_internet))
         }
-        progressBar.visibility = View.INVISIBLE
+        progressBarCircle.visibility = View.INVISIBLE
         etLogin.isEnabled = true
         etPassword.isEnabled = true
         etLogin.requestFocus()
@@ -136,7 +136,7 @@ class InitActivity : AppCompatActivity(), KeyboardHeightObserver, PushTokenActio
 
     private fun sendSignInRequest() {
         "signin/".httpPost(loginParameters).responseObject(SignInResponse.Deserializer()) { _, _, result ->
-            progressBar.visibility = View.INVISIBLE
+            progressBarCircle.visibility = View.INVISIBLE
             result.fold({ onSignInSuccess(it) }, { onSignInFailure(it) })
         }
     }

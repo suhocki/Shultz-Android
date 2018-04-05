@@ -3,5 +3,6 @@
     <dimen name="fab_margin">16dp</dimen>
     <dimen name="fab_elevation">8dp</dimen>
     <dimen name="text_margin">16dp</dimen>
-    <dimen name="fab_offset">4dp</dimen>
+    <dimen name="fab_offset">10dp</dimen>
+    <dimen name="fab_width">140dp</dimen>
 </resources>

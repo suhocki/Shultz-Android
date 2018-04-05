@@ -53,7 +53,7 @@
             android:layout_gravity="center">
 
             <ProgressBar
-                android:id="@+id/progressBar"
+                android:id="@+id/progressBarCircle"
                 android:layout_width="160dp"
                 android:layout_height="160dp"
                 android:layout_gravity="center"
