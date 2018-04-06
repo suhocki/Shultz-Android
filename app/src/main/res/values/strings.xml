@@ -7,6 +7,8 @@
     <string name="rationale_location">Permission to access the location is required for this app due to community wants to know where each Shultz was happened.</string>
     <string name="rationale_undefined">Seems there is no need for enabling requested permission</string>
     <string name="permission_required">Permission required</string>
+    <string name="location_permission_disabled">Location permission is disabled</string>
+    <string name="gps_module_is_off">GPS module is turned OFF</string>
     <string name="ok">OK</string>
     <string name="large_text">
         "Material is the metaphor.\n\n"

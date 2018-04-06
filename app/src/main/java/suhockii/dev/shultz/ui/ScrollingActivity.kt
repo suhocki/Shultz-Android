@@ -90,7 +90,7 @@ class ScrollingActivity : LocationActivity() {
         })
 
         fabShultz.setOnClickListener {
-            getLocation()
+            getLocation { toast("Accuracy ${it.accuracy}") }
         }
     }
 
