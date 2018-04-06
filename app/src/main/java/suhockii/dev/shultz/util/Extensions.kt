@@ -1,14 +1,19 @@
 package suhockii.dev.shultz.util
 
+import android.Manifest
 import android.animation.Animator
 import android.animation.ObjectAnimator
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.os.Bundle
 import android.os.Parcelable
 import android.support.design.widget.AppBarLayout
+import android.support.v4.app.ActivityCompat
+import android.support.v4.content.ContextCompat
+import android.support.v7.app.AlertDialog
 import android.view.MotionEvent
 import android.view.View
 import android.view.animation.Animation
@@ -16,6 +21,8 @@ import android.view.animation.DecelerateInterpolator
 import android.view.inputmethod.InputMethodManager
 import android.widget.ProgressBar
 import android.widget.Toast
+import suhockii.dev.shultz.R
+import suhockii.dev.shultz.ui.PermissionActivity
 import java.io.Serializable
 
 
@@ -141,4 +148,45 @@ fun AppBarLayout.addCollapsingListener(updateState: (collapsed: Boolean) -> Unit
             mCurrentState = idleState
         }
     }
+}
+
+fun PermissionActivity.requestPermission(permissionName: String,
+                                         onPermissionGranted: () -> Unit,
+                                         onPermissionDenied: () -> Unit) {
+    val permissionRequestCode = 101
+
+    val permission = ContextCompat.checkSelfPermission(this, permissionName)
+    if (permission != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this, permissionName)) {
+            val builder = AlertDialog.Builder(this)
+            val rationaleMessage = when (permissionName) {
+                Manifest.permission.ACCESS_FINE_LOCATION -> getString(R.string.rationale_location)
+                else -> getString(R.string.rationale_undefined)
+            }
+            builder.setMessage(rationaleMessage)
+                    .setTitle(getString(R.string.permission_required))
+                    .setPositiveButton(getString(R.string.ok)) { _, _ ->
+                        ActivityCompat.requestPermissions(this, arrayOf(permissionName), permissionRequestCode)
+                    }
+                    .create()
+                    .show()
+        } else {
+            ActivityCompat.requestPermissions(this, arrayOf(permissionName), permissionRequestCode)
+        }
+    } else {
+        onPermissionGranted.invoke()
+    }
+
+    setPermissionsResultListener { requestCode, grantResults ->
+        when (requestCode) {
+            permissionRequestCode -> {
+                if (grantResults.isNotEmpty() && grantResults.first() == PackageManager.PERMISSION_GRANTED)
+                    onPermissionGranted.invoke()
+                else
+                    onPermissionDenied.invoke()
+            }
+        }
+    }
+
+
 }

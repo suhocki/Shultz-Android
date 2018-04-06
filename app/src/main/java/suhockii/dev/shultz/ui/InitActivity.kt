@@ -25,7 +25,7 @@ import java.io.ByteArrayInputStream
 import java.io.InputStreamReader
 
 
-class InitActivity : AppCompatActivity(), KeyboardHeightObserver, PushTokenActions {
+class InitActivity : AppCompatActivity(), KeyboardHeightObserver, PushTokenListener {
 
     private lateinit var keyboardHeightProvider: KeyboardHeightProvider
     private lateinit var firebaseInstanceId: FirebaseInstanceId
@@ -229,7 +229,7 @@ data class SignInResponse(val token: String) {
     }
 }
 
-interface PushTokenActions {
+interface PushTokenListener {
     fun onPushTokenRefreshed()
     fun onPushTokenRefreshFailed()
 }

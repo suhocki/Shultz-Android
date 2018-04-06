@@ -1,9 +1,9 @@
 package suhockii.dev.shultz.ui
 
+import android.Manifest
 import android.content.Context
 import android.os.Bundle
 import android.os.Vibrator
-import android.support.v7.app.AppCompatActivity
 import android.view.Menu
 import android.view.View
 import android.widget.Toast
@@ -12,13 +12,10 @@ import kotlinx.coroutines.experimental.Deferred
 import kotlinx.coroutines.experimental.async
 import kotlinx.coroutines.experimental.delay
 import suhockii.dev.shultz.R
-import suhockii.dev.shultz.util.addCollapsingListener
-import suhockii.dev.shultz.util.animateProgressTo
-import suhockii.dev.shultz.util.setInTouchListener
-import suhockii.dev.shultz.util.withEndAction
+import suhockii.dev.shultz.util.*
 
 
-class ScrollingActivity : AppCompatActivity() {
+class ScrollingActivity : LocationActivity() {
 
     private lateinit var progressDeferred: Deferred<Unit>
     private lateinit var shultzTypes: Array<String>
@@ -81,7 +78,7 @@ class ScrollingActivity : AppCompatActivity() {
                                     .withEndAction { if (progressDeferred.isCancelled) progress = 0 }
                         }
                         delay(progressTickDuration)
-                        currentShultzIndex = index
+                        currentShultzIndex = if (index in 0 until shultzTypes.size) index else shultzTypes.size - 1
                         if (vibrator.hasVibrator()) {
                             vibrator.vibrate(progress.toLong())
                         }
@@ -94,7 +91,11 @@ class ScrollingActivity : AppCompatActivity() {
         })
 
         fabShultz.setOnClickListener {
-            Toast.makeText(this, shultzTypes[currentShultzIndex], Toast.LENGTH_SHORT).show()
+            requestPermission(Manifest.permission.ACCESS_FINE_LOCATION, {
+                Toast.makeText(this, shultzTypes[currentShultzIndex], Toast.LENGTH_SHORT).show()
+            }, {
+                Toast.makeText(this, "Denied((((((", Toast.LENGTH_SHORT).show()
+            })
         }
     }
 
