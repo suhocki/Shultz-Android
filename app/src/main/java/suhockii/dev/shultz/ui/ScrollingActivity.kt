@@ -1,12 +1,10 @@
 package suhockii.dev.shultz.ui
 
-import android.Manifest
 import android.content.Context
 import android.os.Bundle
 import android.os.Vibrator
 import android.view.Menu
 import android.view.View
-import android.widget.Toast
 import kotlinx.android.synthetic.main.activity_scrolling.*
 import kotlinx.coroutines.experimental.Deferred
 import kotlinx.coroutines.experimental.async
@@ -80,6 +78,7 @@ class ScrollingActivity : LocationActivity() {
                         delay(progressTickDuration)
                         currentShultzIndex = if (index in 0 until shultzTypes.size) index else shultzTypes.size - 1
                         if (vibrator.hasVibrator()) {
+                            @Suppress("DEPRECATION")
                             vibrator.vibrate(progress.toLong())
                         }
                     }
@@ -91,11 +90,7 @@ class ScrollingActivity : LocationActivity() {
         })
 
         fabShultz.setOnClickListener {
-            requestPermission(Manifest.permission.ACCESS_FINE_LOCATION, {
-                Toast.makeText(this, shultzTypes[currentShultzIndex], Toast.LENGTH_SHORT).show()
-            }, {
-                Toast.makeText(this, "Denied((((((", Toast.LENGTH_SHORT).show()
-            })
+            getLocation()
         }
     }
 

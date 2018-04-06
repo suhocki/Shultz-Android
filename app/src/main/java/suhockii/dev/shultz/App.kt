@@ -41,9 +41,9 @@ class App : Application() {
     }
 
     companion object {
-        var sharedPreferences: SharedPreferences? = null
+        internal var sharedPreferences: SharedPreferences? = null
 
         @SuppressLint("StaticFieldLeak")
-        var activityHandler: ActivityHandler? = null
+        internal var activityHandler: ActivityHandler? = null
     }
 }

@@ -7,6 +7,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.net.ConnectivityManager
 import android.os.Bundle
 import android.os.Parcelable
@@ -21,8 +22,12 @@ import android.view.animation.DecelerateInterpolator
 import android.view.inputmethod.InputMethodManager
 import android.widget.ProgressBar
 import android.widget.Toast
+import com.google.android.gms.common.api.GoogleApiClient
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.LocationSettingsRequest
+import com.google.android.gms.location.LocationSettingsStatusCodes
 import suhockii.dev.shultz.R
-import suhockii.dev.shultz.ui.PermissionActivity
 import java.io.Serializable
 
 
@@ -154,7 +159,16 @@ fun PermissionActivity.requestPermission(permissionName: String,
                                          onPermissionGranted: () -> Unit,
                                          onPermissionDenied: () -> Unit) {
     val permissionRequestCode = 101
-
+    setPermissionsResultListener { requestCode, grantResults ->
+        when (requestCode) {
+            permissionRequestCode -> {
+                if (grantResults.isNotEmpty() && grantResults.first() == PackageManager.PERMISSION_GRANTED)
+                    onPermissionGranted.invoke()
+                else
+                    onPermissionDenied.invoke()
+            }
+        }
+    }
     val permission = ContextCompat.checkSelfPermission(this, permissionName)
     if (permission != PackageManager.PERMISSION_GRANTED) {
         if (ActivityCompat.shouldShowRequestPermissionRationale(this, permissionName)) {
@@ -176,17 +190,50 @@ fun PermissionActivity.requestPermission(permissionName: String,
     } else {
         onPermissionGranted.invoke()
     }
+}
 
-    setPermissionsResultListener { requestCode, grantResults ->
-        when (requestCode) {
-            permissionRequestCode -> {
-                if (grantResults.isNotEmpty() && grantResults.first() == PackageManager.PERMISSION_GRANTED)
-                    onPermissionGranted.invoke()
-                else
-                    onPermissionDenied.invoke()
-            }
+fun LocationActivity.requestGpsModule(onGpsEnabled: () -> Unit, onGpsDisabled: () -> Unit) {
+    val requestLocation = 199
+    setActivityResultListener { requestCode, resultCode ->
+        if (requestCode == requestLocation && resultCode == Activity.RESULT_OK) {
+            onGpsEnabled.invoke()
+        } else {
+            onGpsDisabled.invoke()
         }
     }
-
-
+    if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+        val googleApiClient = GoogleApiClient.Builder(this)
+                .addApi(LocationServices.API)
+                .addConnectionCallbacks(object : GoogleApiClient.ConnectionCallbacks {
+                    override fun onConnected(bundle: Bundle?) {}
+                    override fun onConnectionSuspended(i: Int) {
+                        googleApiClient.connect()
+                    }
+                })
+                .addOnConnectionFailedListener { connectionResult -> toast(connectionResult.errorCode.toString()) }
+                .build()
+                .apply { connect() }
+        val locationRequest = LocationRequest.create()
+        with(locationRequest) {
+            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+            interval = 30 * 1000L
+            fastestInterval = 5 * 1000L
+        }
+        @Suppress("DEPRECATION")
+        LocationServices.SettingsApi
+                .checkLocationSettings(googleApiClient,
+                        LocationSettingsRequest.Builder()
+                                .addLocationRequest(locationRequest)
+                                .setAlwaysShow(true).build())
+                .setResultCallback { result1 ->
+                    val status = result1.status
+                    if (status.statusCode == LocationSettingsStatusCodes.RESOLUTION_REQUIRED) {
+                        status.startResolutionForResult(this, requestLocation)
+                    } else {
+                        onGpsEnabled.invoke()
+                    }
+                }
+    } else {
+        onGpsEnabled.invoke()
+    }
 }
