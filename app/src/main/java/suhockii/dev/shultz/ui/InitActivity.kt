@@ -11,15 +11,14 @@ import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import com.github.kittinunf.fuel.core.FuelError
 import com.github.kittinunf.fuel.core.Request
-import com.github.kittinunf.fuel.core.ResponseDeserializable
 import com.github.kittinunf.fuel.httpPost
 import com.google.firebase.iid.FirebaseInstanceId
-import com.google.gson.Gson
 import kotlinx.android.synthetic.main.activity_init.*
 import kotlinx.coroutines.experimental.async
 import kotlinx.coroutines.experimental.delay
 import suhockii.dev.shultz.Common
 import suhockii.dev.shultz.R
+import suhockii.dev.shultz.entity.SignInEntity
 import suhockii.dev.shultz.util.*
 import java.io.ByteArrayInputStream
 import java.io.InputStreamReader
@@ -90,9 +89,10 @@ class InitActivity : AppCompatActivity(), KeyboardHeightObserver, PushTokenListe
     private fun sendInitRequest() {
         progressBarCircle.visibility = View.VISIBLE
         networkRequest?.cancel()
-        networkRequest = "init/".httpPost(loginParameters).response { _, _, result ->
-            result.fold({ onInitSuccess() }, { onInitFailure(it) })
-        }
+        networkRequest = getString(R.string.url_init).httpPost(loginParameters)
+                .response { _, _, result ->
+                    result.fold({ onInitSuccess() }, { onInitFailure(it) })
+                }
     }
 
     private fun isUserInputValid(login: String, password: String): Boolean {
@@ -135,13 +135,14 @@ class InitActivity : AppCompatActivity(), KeyboardHeightObserver, PushTokenListe
     }
 
     private fun sendSignInRequest() {
-        "signin/".httpPost(loginParameters).responseObject(SignInResponse.Deserializer()) { _, _, result ->
-            progressBarCircle.visibility = View.INVISIBLE
-            result.fold({ onSignInSuccess(it) }, { onSignInFailure(it) })
-        }
+        getString(R.string.url_signin).httpPost(loginParameters)
+                .responseObject(SignInEntity.Deserializer()) { _, _, result ->
+                    progressBarCircle.visibility = View.INVISIBLE
+                    result.fold({ onSignInSuccess(it) }, { onSignInFailure(it) })
+                }
     }
 
-    private fun onSignInSuccess(signInResponse: SignInResponse) {
+    private fun onSignInSuccess(signInResponse: SignInEntity) {
         Common.sharedPreferences.userToken = signInResponse.token
         startActivity<ScrollingActivity>(getString(R.string.extra_firebase_id) to signInResponse.token)
                 .also { finish() }
@@ -220,16 +221,4 @@ class InitActivity : AppCompatActivity(), KeyboardHeightObserver, PushTokenListe
     override fun onKeyboardHeightChanged(height: Int, orientation: Int) {
         llInit.animate().translationY((-height / 2).toFloat())
     }
-}
-
-data class SignInResponse(val token: String) {
-    class Deserializer : ResponseDeserializable<SignInResponse> {
-        override fun deserialize(content: String) =
-                Gson().fromJson(content, SignInResponse::class.java)!!
-    }
-}
-
-interface PushTokenListener {
-    fun onPushTokenRefreshed()
-    fun onPushTokenRefreshFailed()
 }

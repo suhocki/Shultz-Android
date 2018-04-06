@@ -12,4 +12,8 @@
 
     <string name="server_response_name_exists">This user name already exists.</string>
     <string name="server_response_unauthorized">Unauthorized</string>
+
+    <string name="url_signin">signin/</string>
+    <string name="url_init">init/</string>
+    <string name="url_shultz">shultz/</string>
 </resources>

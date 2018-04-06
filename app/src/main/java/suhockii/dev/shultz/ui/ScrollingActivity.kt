@@ -5,12 +5,18 @@ import android.os.Bundle
 import android.os.Vibrator
 import android.view.Menu
 import android.view.View
+import com.github.kittinunf.fuel.httpPost
 import kotlinx.android.synthetic.main.activity_scrolling.*
 import kotlinx.coroutines.experimental.Deferred
 import kotlinx.coroutines.experimental.async
 import kotlinx.coroutines.experimental.delay
+import suhockii.dev.shultz.Common
 import suhockii.dev.shultz.R
+import suhockii.dev.shultz.entity.LocationEntity
+import suhockii.dev.shultz.entity.ShultzEntity
 import suhockii.dev.shultz.util.*
+import java.io.ByteArrayInputStream
+import java.io.InputStreamReader
 
 
 class ScrollingActivity : LocationActivity() {
@@ -90,7 +96,27 @@ class ScrollingActivity : LocationActivity() {
         })
 
         fabShultz.setOnClickListener {
-            getLocation { toast("Accuracy ${it.accuracy}") }
+            getLocation {
+                val locationEntity = LocationEntity(it.latitude, it.longitude)
+                val shultzEntity = ShultzEntity(currentShultzIndex + 1, locationEntity)
+                getString(R.string.url_shultz).httpPost()
+                        .body(Common.gson.toJson(shultzEntity))
+                        .header(mutableMapOf("auth" to Common.sharedPreferences.userToken!!,
+                                "Content-Type" to "application/json"))
+                        .response { _, _, result ->
+                            result.fold({
+                                toast("Success")
+                            }, {
+                                val data = it.response.data
+                                if (data.isNotEmpty()) {
+                                    val serverMessage = InputStreamReader(ByteArrayInputStream(data)).readLines().first()
+                                    toast(serverMessage)
+                                } else {
+                                    toast(getString(R.string.check_internet))
+                                }
+                            })
+                        }
+            }
         }
     }
 

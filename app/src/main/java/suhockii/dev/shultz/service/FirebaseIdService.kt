@@ -3,7 +3,7 @@ package suhockii.dev.shultz.service
 import com.google.firebase.iid.FirebaseInstanceId
 import com.google.firebase.iid.FirebaseInstanceIdService
 import suhockii.dev.shultz.Common
-import suhockii.dev.shultz.ui.PushTokenListener
+import suhockii.dev.shultz.util.PushTokenListener
 
 
 class FirebaseIdService : FirebaseInstanceIdService() {
