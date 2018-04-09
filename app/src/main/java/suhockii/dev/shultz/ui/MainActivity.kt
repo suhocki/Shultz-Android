@@ -1,8 +1,13 @@
 package suhockii.dev.shultz.ui
 
+import android.content.ComponentName
 import android.content.Context
+import android.content.DialogInterface
+import android.content.Intent
 import android.os.Bundle
 import android.os.Vibrator
+import android.support.v4.content.ContextCompat
+import android.support.v7.app.AlertDialog
 import android.support.v7.widget.LinearLayoutManager
 import android.view.Menu
 import android.view.View
@@ -47,6 +52,28 @@ class MainActivity : LocationActivity() {
         fabStartElevation = resources.getDimensionPixelSize(R.dimen.fab_elevation)
         fabYStart = flShultz.y + resources.getDimensionPixelSize(R.dimen.fab_offset)
         setListeners()
+
+
+        // xiaomi fix
+        val manufacturer = "xiaomi"
+        if (manufacturer.equals(android.os.Build.MANUFACTURER, ignoreCase = true)) {
+            if (Common.sharedPreferences.requestMeizuPushNotifications) {
+                Common.sharedPreferences.requestMeizuPushNotifications = false
+                val dialog = AlertDialog.Builder(this)
+                        .setMessage("Добавьте приложение в автозагрузку для получения уведомлений о новых шульцах.")
+                        .setPositiveButton("OK", null)
+                        .setNegativeButton("ОТМЕНА") { p0, p1 -> p0?.cancel() }.create()
+                dialog.show()
+                val positive = dialog.getButton(DialogInterface.BUTTON_POSITIVE)
+                positive.setOnClickListener {
+                    val intent = Intent()
+                    intent.component = ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")
+                    ContextCompat.startActivity(this, intent, null)
+                    dialog.dismiss()
+                }
+            }
+        }
+
         return true
     }
 
