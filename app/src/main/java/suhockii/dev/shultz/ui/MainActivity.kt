@@ -7,6 +7,7 @@ import android.support.v7.widget.LinearLayoutManager
 import android.view.Menu
 import android.view.View
 import android.widget.LinearLayout
+import com.github.kittinunf.fuel.core.FuelError
 import com.github.kittinunf.fuel.httpPost
 import kotlinx.android.synthetic.main.activity_scrolling.*
 import kotlinx.coroutines.experimental.Deferred
@@ -26,6 +27,7 @@ class MainActivity : LocationActivity() {
 
     private lateinit var progressDeferred: Deferred<Unit>
     private lateinit var vibrator: Vibrator
+    private lateinit var getShultzListUnit: () -> Unit
     private var fabStartElevation: Int = 0
     private var fabYStart: Float = 0f
     private val shultzList = mutableListOf<ShultzInfoEntity>()
@@ -110,13 +112,7 @@ class MainActivity : LocationActivity() {
                             result.fold({
                                 toast("Success")
                             }, {
-                                val data = it.response.data
-                                if (data.isNotEmpty()) {
-                                    val serverMessage = InputStreamReader(ByteArrayInputStream(data)).readLines().first()
-                                    toast(serverMessage)
-                                } else {
-                                    toast(getString(R.string.check_internet))
-                                }
+                                onHttpError(it.response.data)
                             })
                         }
             }
@@ -125,22 +121,43 @@ class MainActivity : LocationActivity() {
 
     private fun initShultzRecycler() {
         val pageSize = Util.getPageSize(recyclerView)
-        recyclerView.layoutManager = LinearLayoutManager(this, LinearLayout.VERTICAL, false)
-        val adapter = ShultzRecyclerAdapter(shultzList)
+        val adapter = ShultzRecyclerAdapter(
+                shultzList,
+                View.OnClickListener { getShultzListUnit.invoke() })
+
         recyclerView.adapter = adapter
+        recyclerView.layoutManager = LinearLayoutManager(this, LinearLayout.VERTICAL, false)
 
         recyclerView.setPagination(1, { offset ->
-            adapter.loading = true
-            adapter.notifyDataSetChanged()
-            getShultzList(offset, recyclerView.adapter.itemCount + pageSize) { shultzList ->
-                if (shultzList.isEmpty()) recyclerView.clearOnScrollListeners()
-                formatDate(shultzList)
-                this@MainActivity.shultzList.addAll(shultzList)
-                adapter.loading = false
+            getShultzListUnit = {
+                adapter.loading = true
+                adapter.showRetry = false
                 adapter.notifyDataSetChanged()
-                recyclerView.tag = PaginationState.FREE
+                getShultzList(offset, recyclerView.adapter.itemCount + pageSize, { shultzList ->
+                    if (shultzList.isEmpty()) recyclerView.clearOnScrollListeners()
+                    formatDate(shultzList)
+                    this@MainActivity.shultzList.addAll(shultzList)
+                    adapter.loading = false
+                    adapter.notifyDataSetChanged()
+                    recyclerView.tag = PaginationState.FREE
+                }, { error ->
+                    onHttpError(error.response.data)
+                    adapter.showRetry = true
+                    adapter.loading = false
+                    adapter.notifyDataSetChanged()
+                })
             }
+            getShultzListUnit.invoke()
         })
+    }
+
+    private fun onHttpError(data: ByteArray) {
+        if (data.isNotEmpty()) {
+            val serverMessage = InputStreamReader(ByteArrayInputStream(data)).readLines().first()
+            toast(serverMessage)
+        } else {
+            toast(getString(R.string.check_internet))
+        }
     }
 
     private fun formatDate(list: List<ShultzInfoEntity>) {
@@ -162,22 +179,13 @@ class MainActivity : LocationActivity() {
 
     private fun getShultzList(offset: Int,
                               limit: Int,
-                              onShultzListReceived: (data: List<ShultzInfoEntity>) -> Unit) {
+                              onShultzListReceived: (data: List<ShultzInfoEntity>) -> Unit,
+                              onError: (fuelError: FuelError) -> Unit) {
         getString(R.string.url_shultz_list).httpPost()
                 .body(Common.gson.toJson(ShultzListRequest(FilterEntity(offset, limit))))
                 .header(mutableMapOf("auth" to Common.sharedPreferences.userToken!!, "Content-Type" to "application/json"))
                 .responseObject(ShultzListEntity.Deserializer()) { _, _, result ->
-                    result.fold({ onShultzListReceived.invoke(it) }, {
-                        recyclerView.tag = PaginationState.FREE
-                        val data = it.response.data
-                        if (data.isNotEmpty()) {
-                            val serverMessage = InputStreamReader(ByteArrayInputStream(data)).readLines().first()
-                            toast(serverMessage)
-                            /*деловая колбаса*/
-                        } else {
-                            toast(getString(R.string.check_internet))
-                        }
-                    })
+                    result.fold({ onShultzListReceived.invoke(it) }, { onError(it) })
                 }
     }
 

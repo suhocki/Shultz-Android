@@ -13,7 +13,7 @@ import com.github.kittinunf.fuel.core.FuelError
 import com.github.kittinunf.fuel.core.Request
 import com.github.kittinunf.fuel.httpPost
 import com.google.firebase.iid.FirebaseInstanceId
-import kotlinx.android.synthetic.main.activity_init.*
+import kotlinx.android.synthetic.main.activity_authentication.*
 import kotlinx.coroutines.experimental.async
 import kotlinx.coroutines.experimental.delay
 import suhockii.dev.shultz.Common
@@ -35,7 +35,7 @@ class AuthenticationActivity : AppCompatActivity(), KeyboardHeightObserver, Push
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_init)
+        setContentView(R.layout.activity_authentication)
 
         keyboardHeightProvider = KeyboardHeightProvider(this)
         firebaseInstanceId = FirebaseInstanceId.getInstance()
