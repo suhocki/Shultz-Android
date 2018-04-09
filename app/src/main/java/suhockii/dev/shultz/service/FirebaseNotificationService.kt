@@ -12,7 +12,7 @@ import android.util.Log
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import suhockii.dev.shultz.R
-import suhockii.dev.shultz.ui.ScrollingActivity
+import suhockii.dev.shultz.ui.MainActivity
 
 
 class FirebaseNotificationService : FirebaseMessagingService() {
@@ -35,7 +35,7 @@ class FirebaseNotificationService : FirebaseMessagingService() {
     }
 
     private fun sendNotification(messageBody: String) {
-        val intent = Intent(this, ScrollingActivity::class.java)
+        val intent = Intent(this, MainActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         val pendingIntent = PendingIntent.getActivity(this, 0 /* Request code */, intent,
                 PendingIntent.FLAG_ONE_SHOT)

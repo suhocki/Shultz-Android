@@ -12,9 +12,9 @@ class SplashActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         val token = Common.sharedPreferences.userToken
         if (token == null) {
-            startActivity<InitActivity>()
+            startActivity<AuthenticationActivity>()
         } else {
-            startActivity<ScrollingActivity>("userToken" to token)
+            startActivity<MainActivity>("userToken" to token)
         }
         finish()
     }

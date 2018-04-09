@@ -24,7 +24,7 @@ import java.io.ByteArrayInputStream
 import java.io.InputStreamReader
 
 
-class InitActivity : AppCompatActivity(), KeyboardHeightObserver, PushTokenListener {
+class AuthenticationActivity : AppCompatActivity(), KeyboardHeightObserver, PushTokenListener {
 
     private lateinit var keyboardHeightProvider: KeyboardHeightProvider
     private lateinit var firebaseInstanceId: FirebaseInstanceId
@@ -144,7 +144,7 @@ class InitActivity : AppCompatActivity(), KeyboardHeightObserver, PushTokenListe
 
     private fun onSignInSuccess(signInResponse: SignInEntity) {
         Common.sharedPreferences.userToken = signInResponse.token
-        startActivity<ScrollingActivity>(getString(R.string.extra_firebase_id) to signInResponse.token)
+        startActivity<MainActivity>(getString(R.string.extra_firebase_id) to signInResponse.token)
                 .also { finish() }
     }
 

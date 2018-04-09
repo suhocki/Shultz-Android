@@ -15,6 +15,8 @@ import android.support.design.widget.AppBarLayout
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AlertDialog
+import android.support.v7.widget.LinearLayoutManager
+import android.support.v7.widget.RecyclerView
 import android.view.MotionEvent
 import android.view.View
 import android.view.animation.Animation
@@ -237,3 +239,20 @@ fun LocationActivity.requestGpsModule(onGpsEnabled: () -> Unit, onGpsDisabled: (
         onGpsEnabled.invoke()
     }
 }
+
+fun RecyclerView.setPagination(visibleThreshold: Int, onLoadMore: (offset: Int) -> Unit) {
+    tag = PaginationState.FREE
+    addOnScrollListener(object : RecyclerView.OnScrollListener() {
+        override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+            super.onScrolled(recyclerView, dx, dy)
+            val lastVisibleItemPosition = (layoutManager as LinearLayoutManager).findLastVisibleItemPosition()
+            if (tag == PaginationState.FREE && lastVisibleItemPosition + visibleThreshold >= adapter.itemCount) {
+                recyclerView.tag = PaginationState.BUSY
+                onLoadMore.invoke(adapter.itemCount)
+            }
+        }
+    })
+    onLoadMore.invoke(adapter.itemCount)
+}
+
+enum class PaginationState { BUSY, FREE }

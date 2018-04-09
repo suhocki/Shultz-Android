@@ -42,7 +42,7 @@ class App : Application() {
 
     companion object {
         @SuppressLint("StaticFieldLeak")
-        internal var activityHandler: ActivityHandler? = null
-        internal var sharedPreferences: SharedPreferences? = null
+        lateinit var activityHandler: ActivityHandler
+        lateinit var sharedPreferences: SharedPreferences
     }
 }

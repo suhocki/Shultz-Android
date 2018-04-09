@@ -3,8 +3,10 @@ package suhockii.dev.shultz.ui
 import android.content.Context
 import android.os.Bundle
 import android.os.Vibrator
+import android.support.v7.widget.LinearLayoutManager
 import android.view.Menu
 import android.view.View
+import android.widget.LinearLayout
 import com.github.kittinunf.fuel.httpPost
 import kotlinx.android.synthetic.main.activity_scrolling.*
 import kotlinx.coroutines.experimental.Deferred
@@ -12,20 +14,21 @@ import kotlinx.coroutines.experimental.async
 import kotlinx.coroutines.experimental.delay
 import suhockii.dev.shultz.Common
 import suhockii.dev.shultz.R
-import suhockii.dev.shultz.entity.LocationEntity
-import suhockii.dev.shultz.entity.ShultzEntity
+import suhockii.dev.shultz.entity.*
 import suhockii.dev.shultz.util.*
 import java.io.ByteArrayInputStream
 import java.io.InputStreamReader
+import java.text.SimpleDateFormat
+import java.util.*
 
 
-class ScrollingActivity : LocationActivity() {
+class MainActivity : LocationActivity() {
 
     private lateinit var progressDeferred: Deferred<Unit>
-    private lateinit var shultzTypes: Array<String>
     private lateinit var vibrator: Vibrator
     private var fabStartElevation: Int = 0
     private var fabYStart: Float = 0f
+    private val shultzList = mutableListOf<ShultzInfoEntity>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,6 +36,7 @@ class ScrollingActivity : LocationActivity() {
         setSupportActionBar(toolbar).also { title = "" }
         shultzTypes = resources.getStringArray(R.array.shultz_types)
         vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        initShultzRecycler()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean = onLayoutVisible()
@@ -101,8 +105,7 @@ class ScrollingActivity : LocationActivity() {
                 val shultzEntity = ShultzEntity(currentShultzIndex + 1, locationEntity)
                 getString(R.string.url_shultz).httpPost()
                         .body(Common.gson.toJson(shultzEntity))
-                        .header(mutableMapOf("auth" to Common.sharedPreferences.userToken!!,
-                                "Content-Type" to "application/json"))
+                        .header(mutableMapOf("auth" to Common.sharedPreferences.userToken!!, "Content-Type" to "application/json"))
                         .response { _, _, result ->
                             result.fold({
                                 toast("Success")
@@ -120,8 +123,67 @@ class ScrollingActivity : LocationActivity() {
         }
     }
 
+    private fun initShultzRecycler() {
+        val pageSize = Util.getPageSize(recyclerView)
+        recyclerView.layoutManager = LinearLayoutManager(this, LinearLayout.VERTICAL, false)
+        val adapter = ShultzRecyclerAdapter(shultzList)
+        recyclerView.adapter = adapter
+
+        recyclerView.setPagination(1, { offset ->
+            adapter.loading = true
+            adapter.notifyDataSetChanged()
+            getShultzList(offset, recyclerView.adapter.itemCount + pageSize) { shultzList ->
+                if (shultzList.isEmpty()) recyclerView.clearOnScrollListeners()
+                formatDate(shultzList)
+                this@MainActivity.shultzList.addAll(shultzList)
+                adapter.loading = false
+                adapter.notifyDataSetChanged()
+                recyclerView.tag = PaginationState.FREE
+            }
+        })
+    }
+
+    private fun formatDate(list: List<ShultzInfoEntity>) {
+        val locale = Util.getCurrentLocale(this)
+        val simpleDateFormat = SimpleDateFormat(getString(R.string.shultz_date_format), locale)
+        val currentDateString = simpleDateFormat.format(Date())
+        list.forEach {
+            simpleDateFormat.timeZone = TimeZone.getTimeZone("GMT+0")
+            simpleDateFormat.applyPattern(getString(R.string.date_time_format))
+            val shultzTime = simpleDateFormat.parse(it.date)
+            simpleDateFormat.applyPattern(getString(R.string.shultz_date_format))
+            simpleDateFormat.timeZone = TimeZone.getDefault()
+            val shultzDateString = simpleDateFormat.format(shultzTime)
+            simpleDateFormat.applyPattern(getString(R.string.shultz_time_format))
+            it.date = if (shultzDateString == currentDateString) simpleDateFormat.format(shultzTime)
+            else shultzDateString.replace(".", "")
+        }
+    }
+
+    private fun getShultzList(offset: Int,
+                              limit: Int,
+                              onShultzListReceived: (data: List<ShultzInfoEntity>) -> Unit) {
+        getString(R.string.url_shultz_list).httpPost()
+                .body(Common.gson.toJson(ShultzListRequest(FilterEntity(offset, limit))))
+                .header(mutableMapOf("auth" to Common.sharedPreferences.userToken!!, "Content-Type" to "application/json"))
+                .responseObject(ShultzListEntity.Deserializer()) { _, _, result ->
+                    result.fold({ onShultzListReceived.invoke(it) }, {
+                        recyclerView.tag = PaginationState.FREE
+                        val data = it.response.data
+                        if (data.isNotEmpty()) {
+                            val serverMessage = InputStreamReader(ByteArrayInputStream(data)).readLines().first()
+                            toast(serverMessage)
+                            /*деловая колбаса*/
+                        } else {
+                            toast(getString(R.string.check_internet))
+                        }
+                    })
+                }
+    }
+
     companion object {
         const val progressTickDuration = 650L
+        lateinit var shultzTypes: Array<String>
     }
 }
 

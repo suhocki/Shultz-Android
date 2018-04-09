@@ -5,12 +5,12 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/colorPrimary"
-    tools:context="suhockii.dev.shultz.ui.ScrollingActivity">
+    tools:context="suhockii.dev.shultz.ui.MainActivity">
 
     <FrameLayout
         android:layout_width="match_parent"
-        android:elevation="@dimen/fab_elevation"
-        android:layout_height="56dp">
+        android:layout_height="56dp"
+        android:elevation="@dimen/fab_elevation">
 
         <ProgressBar
             android:id="@+id/progressBarHorizontal"
@@ -101,6 +101,10 @@
 
     </android.support.design.widget.AppBarLayout>
 
-    <include layout="@layout/content_scrolling" />
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/recyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
 </android.support.design.widget.CoordinatorLayout>
