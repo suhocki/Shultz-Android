@@ -144,6 +144,7 @@ class AuthenticationActivity : AppCompatActivity(), KeyboardHeightObserver, Push
 
     private fun onSignInSuccess(signInResponse: SignInEntity) {
         Common.sharedPreferences.userToken = signInResponse.token
+        Common.sharedPreferences.userName = loginParameters[0].second
         startActivity<MainActivity>(getString(R.string.extra_firebase_id) to signInResponse.token)
                 .also { finish() }
     }

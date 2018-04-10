@@ -119,18 +119,21 @@ fun ProgressBar.animateProgressTo(progressTo: Int): ObjectAnimator {
 }
 
 fun View.setInTouchListener(inTouch: () -> Unit, released: () -> Unit) {
+    tag = TouchState.TOUCHABLE
     setOnTouchListener { _, motionEvent ->
         when (motionEvent.action) {
-            MotionEvent.ACTION_DOWN -> inTouch.invoke()
+            MotionEvent.ACTION_DOWN -> if (tag == TouchState.TOUCHABLE) inTouch.invoke()
             MotionEvent.ACTION_UP -> {
                 performClick()
-                released.invoke()
+                if (tag == TouchState.TOUCHABLE) released.invoke()
             }
-            MotionEvent.ACTION_CANCEL -> released.invoke()
+            MotionEvent.ACTION_CANCEL -> if (tag == TouchState.TOUCHABLE) released.invoke()
         }
         return@setOnTouchListener true
     }
 }
+
+enum class TouchState { TOUCHABLE, UNTOUCHABLE }
 
 fun AppBarLayout.addCollapsingListener(updateState: (collapsed: Boolean) -> Unit) {
     val expandedState = 0
@@ -241,7 +244,6 @@ fun LocationActivity.requestGpsModule(onGpsEnabled: () -> Unit, onGpsDisabled: (
 }
 
 fun RecyclerView.setPagination(visibleThreshold: Int, onLoadMore: (offset: Int) -> Unit) {
-    tag = PaginationState.FREE
     addOnScrollListener(object : RecyclerView.OnScrollListener() {
         override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
             super.onScrolled(recyclerView, dx, dy)
@@ -252,6 +254,7 @@ fun RecyclerView.setPagination(visibleThreshold: Int, onLoadMore: (offset: Int) 
             }
         }
     })
+    tag = PaginationState.BUSY
     onLoadMore.invoke(adapter.itemCount)
 }
 

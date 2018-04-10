@@ -3,12 +3,14 @@ package suhockii.dev.shultz.ui
 import android.content.Context
 import android.os.Bundle
 import android.os.Vibrator
+import android.support.v7.util.DiffUtil
 import android.support.v7.widget.LinearLayoutManager
-import android.view.Menu
+import android.support.v7.widget.RecyclerView
 import android.view.View
 import android.widget.LinearLayout
 import com.github.kittinunf.fuel.core.FuelError
 import com.github.kittinunf.fuel.httpPost
+import com.google.firebase.messaging.RemoteMessage
 import kotlinx.android.synthetic.main.activity_scrolling.*
 import kotlinx.coroutines.experimental.Deferred
 import kotlinx.coroutines.experimental.async
@@ -23,81 +25,64 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 
-class MainActivity : LocationActivity() {
+class MainActivity : LocationActivity(), PushNotificationListener {
 
     private lateinit var progressDeferred: Deferred<Unit>
     private lateinit var vibrator: Vibrator
-    private lateinit var getShultzListUnit: () -> Unit
+    private lateinit var shultzListUnit: () -> Unit
+    private lateinit var onNewShultz: (ShultzInfoEntity) -> Unit
     private var fabStartElevation: Int = 0
-    private var fabYStart: Float = 0f
-    private val shultzList = mutableListOf<ShultzInfoEntity>()
+    private var fabYStart: Int = 0
+    private val listAll = mutableListOf<BaseEntity>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_scrolling)
         setSupportActionBar(toolbar).also { title = "" }
         shultzTypes = resources.getStringArray(R.array.shultz_types)
+        fabStartElevation = resources.getDimensionPixelSize(R.dimen.fab_elevation)
+        fabYStart = Util.getFabY(resources, VISIBLE_ITEMS_ON_START)
+        val appBarMarginBottom = resources.getDimensionPixelSize(R.dimen.item_shultz_height) * VISIBLE_ITEMS_ON_START
+        Util.setMargins(appBar, 0, 0, 0, appBarMarginBottom)
         vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         initShultzRecycler()
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean = onLayoutVisible()
-
-    private fun onLayoutVisible(): Boolean {
-        fabStartElevation = resources.getDimensionPixelSize(R.dimen.fab_elevation)
-        fabYStart = flShultz.y + resources.getDimensionPixelSize(R.dimen.fab_offset)
+    override fun onResume() {
+        super.onResume()
         setListeners()
-        return true
     }
 
     private fun setListeners() {
-        var currentProgressView = progressBarCircle
         var currentShultzIndex = 0
 
         appBar.addOnOffsetChangedListener { appBar, offset ->
             val collapsedPercent = Math.abs(offset.toFloat() / appBar.totalScrollRange)
             val delta = 1 - collapsedPercent
-            val fabZFactor = if (delta > 1 / 2f) {
-                1f
-            } else {
-                delta * delta * 2f
-            }
+            var fabZFactor = if (delta > 1 / 2f) 1f else delta * delta * 2f
+            if (fabZFactor < 0.2f) fabZFactor = 0f
+            fabShultz.tag = if (fabZFactor == 0f) TouchState.UNTOUCHABLE else TouchState.TOUCHABLE
             fabShultz.compatElevation = fabStartElevation * fabZFactor
-            flShultz.y = fabYStart - (offset / 2)
-        }
-
-        appBar.addCollapsingListener { collapsed ->
-            if (collapsed) {
-                ivProgressBarHorizontalMask.visibility = View.VISIBLE
-                currentProgressView = progressBarHorizontal
-            } else {
-                ivProgressBarHorizontalMask.visibility = View.INVISIBLE
-                currentProgressView = progressBarCircle
-            }
+            flShultz.y = (fabYStart - (offset / 2)).toFloat()
         }
 
         fabShultz.setInTouchListener({
-            with(currentProgressView) {
-                progress = 0
-                currentShultzIndex = 0
-                animate().alpha(1f)
-                progressDeferred = async {
-                    for (index in 1..shultzTypes.size) {
-                        runOnUiThread {
-                            animateProgressTo(index * 100 / shultzTypes.size)
-                                    .withEndAction { if (progressDeferred.isCancelled) progress = 0 }
-                        }
-                        delay(progressTickDuration)
-                        currentShultzIndex = if (index in 0 until shultzTypes.size) index else shultzTypes.size - 1
-                        if (vibrator.hasVibrator()) {
-                            @Suppress("DEPRECATION")
-                            vibrator.vibrate(progress.toLong())
-                        }
+            currentShultzIndex = 0
+            progressBarCircle.progress = 0
+            progressBarCircle.animate().alpha(1f)
+            progressDeferred = async {
+                for (index in 1..shultzTypes.size) {
+                    runOnUiThread {
+                        progressBarCircle.animateProgressTo(index * 100 / shultzTypes.size)
+                                .withEndAction { if (progressDeferred.isCancelled) progressBarCircle.progress = 0 }
                     }
+                    delay(PROGRESS_TICK_DURATION)
+                    currentShultzIndex = if (index in 0 until shultzTypes.size) index else shultzTypes.size - 1
+                    if (vibrator.hasVibrator()) vibrator.vibrate(progressBarCircle.progress.toLong())
                 }
             }
         }, {
-            currentProgressView.animate().alpha(0f)
+            progressBarCircle.animate().alpha(0f)
             progressDeferred.cancel()
         })
 
@@ -110,7 +95,11 @@ class MainActivity : LocationActivity() {
                         .header(mutableMapOf("auth" to Common.sharedPreferences.userToken!!, "Content-Type" to "application/json"))
                         .response { _, _, result ->
                             result.fold({
-                                toast("Success")
+                                val currentDate = Date()
+                                val date = SimpleDateFormat(getString(R.string.shultz_time_format), Locale.getDefault()).format(currentDate)
+                                val shultzInfoEntity = ShultzInfoEntity(currentDate.time.toString(), Common.sharedPreferences.userName,
+                                        shultzEntity.power, date, shultzEntity.location)
+                                onNewShultz.invoke(shultzInfoEntity)
                             }, {
                                 onHttpError(it.response.data)
                             })
@@ -120,35 +109,67 @@ class MainActivity : LocationActivity() {
     }
 
     private fun initShultzRecycler() {
-        val pageSize = Util.getPageSize(recyclerView)
+        val pageSize = Util.getPageSize(resources)
         val adapter = ShultzRecyclerAdapter(
-                shultzList,
-                View.OnClickListener { getShultzListUnit.invoke() })
+                listAll,
+                View.OnClickListener { shultzListUnit.invoke() })
 
         recyclerView.adapter = adapter
         recyclerView.layoutManager = LinearLayoutManager(this, LinearLayout.VERTICAL, false)
 
-        recyclerView.setPagination(1, { offset ->
-            getShultzListUnit = {
-                adapter.loading = true
-                adapter.showRetry = false
-                adapter.notifyDataSetChanged()
-                getShultzList(offset, recyclerView.adapter.itemCount + pageSize, { shultzList ->
-                    if (shultzList.isEmpty()) recyclerView.clearOnScrollListeners()
+        recyclerView.setPagination(PAGINATION_VISIBLE_THRESHOLD, { offset ->
+            shultzListUnit = {
+                val listWithLoading = mutableListOf<BaseEntity>()
+                listWithLoading.addAll(listAll)
+                if (listAll.lastOrNull() is RetryEntity) listAll.removeAt(listAll.lastIndex)
+                listAll.add(LoadingEntity())
+                animateRecyclerContentDiff(recyclerView, listWithLoading, listAll, {})
+
+                getShultzList(offset, recyclerView.adapter.itemCount + pageSize * 2, { shultzList ->
                     formatDate(shultzList)
-                    this@MainActivity.shultzList.addAll(shultzList)
-                    adapter.loading = false
-                    adapter.notifyDataSetChanged()
-                    recyclerView.tag = PaginationState.FREE
+                    if (shultzList.isEmpty()) recyclerView.clearOnScrollListeners()
+                    val listWithShultz = mutableListOf<BaseEntity>()
+                    listWithShultz.addAll(listAll)
+                    if (listAll.lastOrNull() is LoadingEntity) listAll.removeAt(listAll.lastIndex)
+                    listAll.addAll(shultzList)
+                    animateRecyclerContentDiff(recyclerView, listWithShultz, listAll, { recyclerView.tag = PaginationState.FREE })
                 }, { error ->
                     onHttpError(error.response.data)
-                    adapter.showRetry = true
-                    adapter.loading = false
-                    adapter.notifyDataSetChanged()
+                    val listWithError = mutableListOf<BaseEntity>()
+                    listWithError.addAll(listAll)
+                    if (listAll.lastOrNull() is LoadingEntity) listAll.removeAt(listAll.lastIndex)
+                    listAll.add(RetryEntity())
+                    animateRecyclerContentDiff(recyclerView, listWithError, listAll, {})
                 })
             }
-            getShultzListUnit.invoke()
+            shultzListUnit.invoke()
         })
+
+        onNewShultz = {
+            val oldList = mutableListOf<BaseEntity>().apply { addAll(listAll) }
+            listAll.add(0, it)
+            animateRecyclerContentDiff(recyclerView, oldList, listAll, {
+                val layoutManager = recyclerView.layoutManager as LinearLayoutManager
+                if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0) {
+                    layoutManager.scrollToPosition(0)
+                }
+                recyclerView.tag = PaginationState.FREE
+            })
+        }
+    }
+
+    private fun animateRecyclerContentDiff(recyclerView: RecyclerView,
+                                           oldList: List<BaseEntity>,
+                                           newList: MutableList<BaseEntity>,
+                                           endAction: () -> Unit) {
+        async {
+            val diffUtilCallback = ShultzDiffUtilCallback(oldList, newList)
+            val diffResult = DiffUtil.calculateDiff(diffUtilCallback)
+            runOnUiThread {
+                diffResult.dispatchUpdatesTo(recyclerView.adapter)
+                endAction.invoke()
+            }
+        }
     }
 
     private fun onHttpError(data: ByteArray) {
@@ -165,15 +186,19 @@ class MainActivity : LocationActivity() {
         val simpleDateFormat = SimpleDateFormat(getString(R.string.shultz_date_format), locale)
         val currentDateString = simpleDateFormat.format(Date())
         list.forEach {
-            simpleDateFormat.timeZone = TimeZone.getTimeZone("GMT+0")
-            simpleDateFormat.applyPattern(getString(R.string.date_time_format))
-            val shultzTime = simpleDateFormat.parse(it.date)
-            simpleDateFormat.applyPattern(getString(R.string.shultz_date_format))
-            simpleDateFormat.timeZone = TimeZone.getDefault()
-            val shultzDateString = simpleDateFormat.format(shultzTime)
-            simpleDateFormat.applyPattern(getString(R.string.shultz_time_format))
-            it.date = if (shultzDateString == currentDateString) simpleDateFormat.format(shultzTime)
-            else shultzDateString.replace(".", "")
+            if (it.date.isBlank()) {
+                it.date = "n/a"
+            } else {
+                simpleDateFormat.timeZone = TimeZone.getTimeZone("GMT+0")
+                simpleDateFormat.applyPattern(getString(R.string.date_time_format))
+                val shultzTime = simpleDateFormat.parse(it.date)
+                simpleDateFormat.applyPattern(getString(R.string.shultz_date_format))
+                simpleDateFormat.timeZone = TimeZone.getDefault()
+                val shultzDateString = simpleDateFormat.format(shultzTime)
+                simpleDateFormat.applyPattern(getString(R.string.shultz_time_format))
+                it.date = if (shultzDateString == currentDateString) simpleDateFormat.format(shultzTime)
+                else shultzDateString.replace(".", "")
+            }
         }
     }
 
@@ -189,8 +214,18 @@ class MainActivity : LocationActivity() {
                 }
     }
 
+    override fun onPushNotificationReceived(remoteMessage: RemoteMessage) {
+        val body = remoteMessage.notification!!.body
+        val shultzInfoEntity = Common.gson.fromJson(body, ShultzInfoEntity::class.java)
+        val list = listOf(shultzInfoEntity)
+        formatDate(list)
+        onNewShultz.invoke(list.first())
+    }
+
     companion object {
-        const val progressTickDuration = 650L
+        const val PROGRESS_TICK_DURATION = 650L
+        const val PAGINATION_VISIBLE_THRESHOLD = 6
+        const val VISIBLE_ITEMS_ON_START = 2
         lateinit var shultzTypes: Array<String>
     }
 }

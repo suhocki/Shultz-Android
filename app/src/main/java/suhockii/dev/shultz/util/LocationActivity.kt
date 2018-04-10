@@ -37,6 +37,10 @@ open class LocationActivity : PermissionActivity(), LocationListener {
         requestPermission(Manifest.permission.ACCESS_FINE_LOCATION, {
             requestGpsModule({
                 locationManager.requestSingleUpdate(criteria, this, null)
+                val isNetworkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+                if (isNetworkEnabled) {
+                    locationManager.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, this, null)
+                }
             }, {
                 toast(getString(R.string.gps_module_is_off))
             })
@@ -47,6 +51,7 @@ open class LocationActivity : PermissionActivity(), LocationListener {
 
     override fun onLocationChanged(location: Location?) {
         location?.let { onLocationReceived?.invoke(it) }
+        locationManager.removeUpdates(this)
     }
 
     override fun onStatusChanged(p0: String?, p1: Int, p2: Bundle?) {}
