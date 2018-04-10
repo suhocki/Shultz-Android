@@ -1,7 +1,7 @@
 package suhockii.dev.shultz.util
 
-import com.google.firebase.messaging.RemoteMessage
+import suhockii.dev.shultz.entity.ShultzInfoEntity
 
 interface PushNotificationListener {
-    fun onPushNotificationReceived(remoteMessage: RemoteMessage)
+    fun onPushNotificationReceived(shultzInfoEntity: ShultzInfoEntity)
 }

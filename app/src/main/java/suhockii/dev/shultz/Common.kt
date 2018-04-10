@@ -1,7 +1,6 @@
 package suhockii.dev.shultz
 
 import com.google.gson.Gson
-import suhockii.dev.shultz.ui.MainActivity
 
 object Common {
     val sharedPreferences: SharedPreferences by lazy {
@@ -13,7 +12,7 @@ object Common {
     }
 
     val shultzTypes: Array<String> by lazy {
-        MainActivity.shultzTypes
+        App.shultzTypes
     }
 
     val gson = Gson()

@@ -11,34 +11,54 @@ import android.support.v4.app.NotificationCompat
 import android.util.Log
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import org.json.JSONObject
 import suhockii.dev.shultz.Common
 import suhockii.dev.shultz.R
+import suhockii.dev.shultz.entity.LocationEntity
+import suhockii.dev.shultz.entity.ShultzInfoEntity
 import suhockii.dev.shultz.ui.MainActivity
 import suhockii.dev.shultz.util.PushNotificationListener
+import suhockii.dev.shultz.util.Util
 
 
 class FirebaseNotificationService : FirebaseMessagingService() {
 
+    override fun onCreate() {
+        super.onCreate()
+        Log.d(TAG, "oncreate")
+    }
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
-        Log.d(TAG, "From: " + remoteMessage.from!!)
+        Log.d(TAG, "FirebaseNotificationService" + remoteMessage.from!!)
 
         // Check if message contains a data payload.
         if (remoteMessage.data.isNotEmpty()) {
-            Log.d(TAG, "Message data payload: " + remoteMessage.data)
-            sendNotification("kek")
+            val currentActivity = Common.activityHandler.currentActivity
+            val location = Common.gson.fromJson(remoteMessage.data[KEY_LOCATION], LocationEntity::class.java)
+            remoteMessage.data.remove(KEY_LOCATION)
+            val data = JSONObject(remoteMessage.data).toString()
+            val shultzInfoEntity = Common.gson.fromJson(data, ShultzInfoEntity::class.java)
+            shultzInfoEntity.location = location
+            if (currentActivity != null && currentActivity is PushNotificationListener) {
+                val list = listOf(shultzInfoEntity)
+                Util.formatDate(this, list)
+                currentActivity.onPushNotificationReceived(list.first())
+            } else if (currentActivity == null) {
+                sendNotification(shultzInfoEntity)
+            }
         }
 
         // FOREGROUND
         if (remoteMessage.notification != null) {
-            val currentActivity = Common.activityHandler.currentActivity
-            if (currentActivity != null && currentActivity is PushNotificationListener) {
-                currentActivity.onPushNotificationReceived(remoteMessage)
-            }
+
         }
 
     }
 
-    private fun sendNotification(messageBody: String) {
+    private fun sendNotification(shultzInfoEntity: ShultzInfoEntity) {
+        Log.d(TAG, "sendNotification")
+        val shultzIndex = shultzInfoEntity.power - 1
+        val shultzTypes = Common.shultzTypes
+
         val intent = Intent(this, MainActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         val pendingIntent = PendingIntent.getActivity(this, 0 /* Request code */, intent,
@@ -48,8 +68,8 @@ class FirebaseNotificationService : FirebaseMessagingService() {
         val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         val notificationBuilder = NotificationCompat.Builder(this, channelId)
                 .setSmallIcon(R.drawable.ic_stat_ic_notification)
-                .setContentTitle("FCM Message")
-                .setContentText(messageBody)
+                .setContentTitle(shultzInfoEntity.user)
+                .setContentText(if (shultzIndex in 0..shultzTypes.size) shultzTypes[shultzIndex] else "n/a")
                 .setAutoCancel(true)
                 .setSound(defaultSoundUri)
                 .setContentIntent(pendingIntent)
@@ -69,6 +89,7 @@ class FirebaseNotificationService : FirebaseMessagingService() {
 
     companion object {
 
-        private val TAG = "MyFirebaseMsgService"
+        private val TAG = "FirebaseNotification"
+        private const val KEY_LOCATION = "location"
     }
 }

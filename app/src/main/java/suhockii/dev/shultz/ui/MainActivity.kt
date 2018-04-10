@@ -10,7 +10,6 @@ import android.view.View
 import android.widget.LinearLayout
 import com.github.kittinunf.fuel.core.FuelError
 import com.github.kittinunf.fuel.httpPost
-import com.google.firebase.messaging.RemoteMessage
 import kotlinx.android.synthetic.main.activity_scrolling.*
 import kotlinx.coroutines.experimental.Deferred
 import kotlinx.coroutines.experimental.async
@@ -39,17 +38,12 @@ class MainActivity : LocationActivity(), PushNotificationListener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_scrolling)
         setSupportActionBar(toolbar).also { title = "" }
-        shultzTypes = resources.getStringArray(R.array.shultz_types)
         fabStartElevation = resources.getDimensionPixelSize(R.dimen.fab_elevation)
         fabYStart = Util.getFabY(resources, VISIBLE_ITEMS_ON_START)
         val appBarMarginBottom = resources.getDimensionPixelSize(R.dimen.item_shultz_height) * VISIBLE_ITEMS_ON_START
         Util.setMargins(appBar, 0, 0, 0, appBarMarginBottom)
         vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         initShultzRecycler()
-    }
-
-    override fun onResume() {
-        super.onResume()
         setListeners()
     }
 
@@ -71,13 +65,13 @@ class MainActivity : LocationActivity(), PushNotificationListener {
             progressBarCircle.progress = 0
             progressBarCircle.animate().alpha(1f)
             progressDeferred = async {
-                for (index in 1..shultzTypes.size) {
+                for (index in 1..Common.shultzTypes.size) {
                     runOnUiThread {
-                        progressBarCircle.animateProgressTo(index * 100 / shultzTypes.size)
+                        progressBarCircle.animateProgressTo(index * 100 / Common.shultzTypes.size)
                                 .withEndAction { if (progressDeferred.isCancelled) progressBarCircle.progress = 0 }
                     }
                     delay(PROGRESS_TICK_DURATION)
-                    currentShultzIndex = if (index in 0 until shultzTypes.size) index else shultzTypes.size - 1
+                    currentShultzIndex = if (index in 0 until Common.shultzTypes.size) index else Common.shultzTypes.size - 1
                     if (vibrator.hasVibrator()) vibrator.vibrate(progressBarCircle.progress.toLong())
                 }
             }
@@ -126,7 +120,7 @@ class MainActivity : LocationActivity(), PushNotificationListener {
                 animateRecyclerContentDiff(recyclerView, listWithLoading, listAll, {})
 
                 getShultzList(offset, recyclerView.adapter.itemCount + pageSize * 2, { shultzList ->
-                    formatDate(shultzList)
+                    Util.formatDate(this, shultzList)
                     if (shultzList.isEmpty()) recyclerView.clearOnScrollListeners()
                     val listWithShultz = mutableListOf<BaseEntity>()
                     listWithShultz.addAll(listAll)
@@ -181,26 +175,6 @@ class MainActivity : LocationActivity(), PushNotificationListener {
         }
     }
 
-    private fun formatDate(list: List<ShultzInfoEntity>) {
-        val locale = Util.getCurrentLocale(this)
-        val simpleDateFormat = SimpleDateFormat(getString(R.string.shultz_date_format), locale)
-        val currentDateString = simpleDateFormat.format(Date())
-        list.forEach {
-            if (it.date.isBlank()) {
-                it.date = "n/a"
-            } else {
-                simpleDateFormat.timeZone = TimeZone.getTimeZone("GMT+0")
-                simpleDateFormat.applyPattern(getString(R.string.date_time_format))
-                val shultzTime = simpleDateFormat.parse(it.date)
-                simpleDateFormat.applyPattern(getString(R.string.shultz_date_format))
-                simpleDateFormat.timeZone = TimeZone.getDefault()
-                val shultzDateString = simpleDateFormat.format(shultzTime)
-                simpleDateFormat.applyPattern(getString(R.string.shultz_time_format))
-                it.date = if (shultzDateString == currentDateString) simpleDateFormat.format(shultzTime)
-                else shultzDateString.replace(".", "")
-            }
-        }
-    }
 
     private fun getShultzList(offset: Int,
                               limit: Int,
@@ -214,19 +188,16 @@ class MainActivity : LocationActivity(), PushNotificationListener {
                 }
     }
 
-    override fun onPushNotificationReceived(remoteMessage: RemoteMessage) {
-        val body = remoteMessage.notification!!.body
-        val shultzInfoEntity = Common.gson.fromJson(body, ShultzInfoEntity::class.java)
-        val list = listOf(shultzInfoEntity)
-        formatDate(list)
-        onNewShultz.invoke(list.first())
+    override fun onPushNotificationReceived(shultzInfoEntity: ShultzInfoEntity) {
+        onNewShultz.invoke(shultzInfoEntity)
+        if (vibrator.hasVibrator()) vibrator.vibrate(VIBRATION_TICK_DURATION * shultzInfoEntity.power)
     }
 
     companion object {
         const val PROGRESS_TICK_DURATION = 650L
+        const val VIBRATION_TICK_DURATION = 35L
         const val PAGINATION_VISIBLE_THRESHOLD = 6
         const val VISIBLE_ITEMS_ON_START = 2
-        lateinit var shultzTypes: Array<String>
     }
 }
 

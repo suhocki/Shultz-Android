@@ -14,4 +14,4 @@ data class ShultzInfoEntity(@SerializedName("_id") override val id: String,
                             val user: String,
                             val power: Int,
                             var date: String,
-                            val location: LocationEntity) : BaseEntity
+                            var location: LocationEntity) : BaseEntity

@@ -15,6 +15,7 @@ class App : Application() {
         initSharedPreferences()
         initFuel()
         setNotificationChannel()
+        shultzTypes = resources.getStringArray(R.array.shultz_types)
     }
 
     private fun initActivityHandler() {
@@ -44,5 +45,6 @@ class App : Application() {
         @SuppressLint("StaticFieldLeak")
         lateinit var activityHandler: ActivityHandler
         lateinit var sharedPreferences: SharedPreferences
+        lateinit var shultzTypes: Array<String>
     }
 }
