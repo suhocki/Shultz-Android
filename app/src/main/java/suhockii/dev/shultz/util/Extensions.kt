@@ -256,11 +256,12 @@ fun RecyclerView.setPagination(visibleThreshold: Int, onLoadMore: (offset: Int) 
             }
         }
     })
+
     tag = PaginationState.BUSY
     onLoadMore.invoke(adapter.itemCount)
 }
 
-enum class PaginationState { BUSY, FREE }
+enum class PaginationState { BUSY, FREE, ALL_LOADED }
 
 fun View.onViewShown(onViewShown: () -> Unit) {
     var listener: ViewTreeObserver.OnGlobalLayoutListener? = null

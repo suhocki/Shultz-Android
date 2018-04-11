@@ -22,6 +22,7 @@ import java.io.ByteArrayInputStream
 import java.io.InputStreamReader
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.collections.ArrayList
 
 
 class MainActivity : LocationActivity(), PushNotificationListener {
@@ -33,7 +34,7 @@ class MainActivity : LocationActivity(), PushNotificationListener {
     private var fabStartElevation: Float = 0f
     private var fabYStart: Float = 0f
     private var tvMapXStart: Float = 0f
-    private val listAll = mutableListOf<BaseEntity>()
+    private var listAll = ArrayList<BaseEntity>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,7 +49,69 @@ class MainActivity : LocationActivity(), PushNotificationListener {
         val appBarMarginBottom = resources.getDimensionPixelSize(R.dimen.item_shultz_height) * VISIBLE_ITEMS_ON_START
         Util.setMargins(appBar, 0, 0, 0, appBarMarginBottom)
         vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        initShultzRecycler()
+        listAll = savedInstanceState?.getParcelableArrayList(INSTANCE_STATE_LIST_ALL) ?: listAll
+        val adapter = ShultzRecyclerAdapter(listAll, View.OnClickListener { shultzListUnit.invoke() })
+
+        recyclerView.adapter = adapter
+        recyclerView.layoutManager = LinearLayoutManager(this, LinearLayout.VERTICAL, false)
+
+        val notAllLoaded = savedInstanceState == null || !savedInstanceState.getBoolean(INSTANCE_STATE_ALL_LOADED)
+        if (notAllLoaded) initPagination() else recyclerView.tag = PaginationState.ALL_LOADED
+
+        onNewShultz = {
+            val oldList = mutableListOf<BaseEntity>().apply { addAll(listAll) }
+            listAll.add(0, it)
+            animateRecyclerContentDiff(recyclerView, oldList, listAll, {
+                val layoutManager = recyclerView.layoutManager as LinearLayoutManager
+                if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0) {
+                    layoutManager.scrollToPosition(0)
+                }
+                recyclerView.tag = PaginationState.FREE
+            })
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putParcelableArrayList(INSTANCE_STATE_LIST_ALL, listAll)
+        outState.putBoolean(INSTANCE_STATE_ALL_LOADED, recyclerView.tag == PaginationState.ALL_LOADED)
+    }
+
+    private fun initPagination() {
+        val pageSize = Util.getPageSize(resources)
+        recyclerView.setPagination(PAGINATION_VISIBLE_THRESHOLD, { offset ->
+            shultzListUnit = {
+                val listWithLoading = mutableListOf<BaseEntity>()
+                listWithLoading.addAll(listAll)
+                if (listAll.lastOrNull() is RetryEntity) listAll.removeAt(listAll.lastIndex)
+                listAll.add(LoadingEntity())
+                animateRecyclerContentDiff(recyclerView, listWithLoading, listAll, {})
+
+                getShultzList(offset, recyclerView.adapter.itemCount + pageSize * 2, { shultzList ->
+                    Util.formatDate(this, shultzList)
+                    if (shultzList.isEmpty()) {
+                        recyclerView.clearOnScrollListeners()
+                        recyclerView.tag = PaginationState.ALL_LOADED
+                    }
+                    val listWithShultz = mutableListOf<BaseEntity>()
+                    listWithShultz.addAll(listAll)
+                    if (listAll.lastOrNull() is LoadingEntity) listAll.removeAt(listAll.lastIndex)
+                    listAll.addAll(shultzList)
+                    animateRecyclerContentDiff(recyclerView, listWithShultz, listAll, {
+                        if (recyclerView.tag != PaginationState.ALL_LOADED)
+                            recyclerView.tag = PaginationState.FREE
+                    })
+                }, { error ->
+                    onHttpError(error.response.data)
+                    val listWithError = mutableListOf<BaseEntity>()
+                    listWithError.addAll(listAll)
+                    if (listAll.lastOrNull() is LoadingEntity) listAll.removeAt(listAll.lastIndex)
+                    listAll.add(RetryEntity())
+                    animateRecyclerContentDiff(recyclerView, listWithError, listAll, {})
+                })
+            }
+            shultzListUnit.invoke()
+        })
     }
 
     private fun setListeners() {
@@ -108,56 +171,6 @@ class MainActivity : LocationActivity(), PushNotificationListener {
         }
     }
 
-    private fun initShultzRecycler() {
-        val pageSize = Util.getPageSize(resources)
-        val adapter = ShultzRecyclerAdapter(
-                listAll,
-                View.OnClickListener { shultzListUnit.invoke() })
-
-        recyclerView.adapter = adapter
-        recyclerView.layoutManager = LinearLayoutManager(this, LinearLayout.VERTICAL, false)
-
-        recyclerView.setPagination(PAGINATION_VISIBLE_THRESHOLD, { offset ->
-            shultzListUnit = {
-                val listWithLoading = mutableListOf<BaseEntity>()
-                listWithLoading.addAll(listAll)
-                if (listAll.lastOrNull() is RetryEntity) listAll.removeAt(listAll.lastIndex)
-                listAll.add(LoadingEntity())
-                animateRecyclerContentDiff(recyclerView, listWithLoading, listAll, {})
-
-                getShultzList(offset, recyclerView.adapter.itemCount + pageSize * 2, { shultzList ->
-                    Util.formatDate(this, shultzList)
-                    if (shultzList.isEmpty()) recyclerView.clearOnScrollListeners()
-                    val listWithShultz = mutableListOf<BaseEntity>()
-                    listWithShultz.addAll(listAll)
-                    if (listAll.lastOrNull() is LoadingEntity) listAll.removeAt(listAll.lastIndex)
-                    listAll.addAll(shultzList)
-                    animateRecyclerContentDiff(recyclerView, listWithShultz, listAll, { recyclerView.tag = PaginationState.FREE })
-                }, { error ->
-                    onHttpError(error.response.data)
-                    val listWithError = mutableListOf<BaseEntity>()
-                    listWithError.addAll(listAll)
-                    if (listAll.lastOrNull() is LoadingEntity) listAll.removeAt(listAll.lastIndex)
-                    listAll.add(RetryEntity())
-                    animateRecyclerContentDiff(recyclerView, listWithError, listAll, {})
-                })
-            }
-            shultzListUnit.invoke()
-        })
-
-        onNewShultz = {
-            val oldList = mutableListOf<BaseEntity>().apply { addAll(listAll) }
-            listAll.add(0, it)
-            animateRecyclerContentDiff(recyclerView, oldList, listAll, {
-                val layoutManager = recyclerView.layoutManager as LinearLayoutManager
-                if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0) {
-                    layoutManager.scrollToPosition(0)
-                }
-                recyclerView.tag = PaginationState.FREE
-            })
-        }
-    }
-
     private fun animateRecyclerContentDiff(recyclerView: RecyclerView,
                                            oldList: List<BaseEntity>,
                                            newList: MutableList<BaseEntity>,
@@ -204,6 +217,8 @@ class MainActivity : LocationActivity(), PushNotificationListener {
         const val VIBRATION_TICK_DURATION = 35L
         const val PAGINATION_VISIBLE_THRESHOLD = 6
         const val VISIBLE_ITEMS_ON_START = 2
+        const val INSTANCE_STATE_LIST_ALL = "INSTANCE_STATE_LIST_ALL"
+        const val INSTANCE_STATE_ALL_LOADED = "INSTANCE_STATE_ALL_LOADED"
     }
 }
 

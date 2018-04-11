@@ -73,7 +73,7 @@
                 android:id="@+id/tvMap"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="right|center_horizontal"
+                android:layout_gravity="bottom|center_horizontal"
                 android:layout_margin="8dp"
                 android:elevation="@dimen/fab_elevation"
                 android:foreground="?android:attr/selectableItemBackground"
