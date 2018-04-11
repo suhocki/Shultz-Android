@@ -11,9 +11,9 @@
         android:id="@+id/appBar"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:expanded="true"
         android:layout_marginBottom="200dp"
-        android:theme="@style/AppTheme.AppBarOverlay">
+        android:theme="@style/AppTheme.AppBarOverlay"
+        app:expanded="true">
 
         <android.support.design.widget.CollapsingToolbarLayout
             android:id="@+id/collapsingToolbar"
@@ -69,6 +69,20 @@
                     android:src="@drawable/mask_progress_rounded" />
             </FrameLayout>
 
+            <TextView
+                android:id="@+id/tvMap"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="right|center_horizontal"
+                android:layout_margin="8dp"
+                android:elevation="@dimen/fab_elevation"
+                android:foreground="?android:attr/selectableItemBackground"
+                android:padding="8dp"
+                android:text="@string/map"
+                android:textAllCaps="true"
+                android:textColor="@color/common_google_signin_btn_text_light_default"
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
         </android.support.design.widget.CollapsingToolbarLayout>
 

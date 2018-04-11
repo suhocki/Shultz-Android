@@ -10,7 +10,7 @@ import android.view.View
 import android.widget.LinearLayout
 import com.github.kittinunf.fuel.core.FuelError
 import com.github.kittinunf.fuel.httpPost
-import kotlinx.android.synthetic.main.activity_scrolling.*
+import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.experimental.Deferred
 import kotlinx.coroutines.experimental.async
 import kotlinx.coroutines.experimental.delay
@@ -30,25 +30,30 @@ class MainActivity : LocationActivity(), PushNotificationListener {
     private lateinit var vibrator: Vibrator
     private lateinit var shultzListUnit: () -> Unit
     private lateinit var onNewShultz: (ShultzInfoEntity) -> Unit
-    private var fabStartElevation: Int = 0
-    private var fabYStart: Int = 0
+    private var fabStartElevation: Float = 0f
+    private var fabYStart: Float = 0f
+    private var tvMapXStart: Float = 0f
     private val listAll = mutableListOf<BaseEntity>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_scrolling)
-        setSupportActionBar(toolbar).also { title = "" }
-        fabStartElevation = resources.getDimensionPixelSize(R.dimen.fab_elevation)
+        val contentView = layoutInflater.inflate(R.layout.activity_main, null)
+        contentView.onViewShown {
+            tvMapXStart = tvMap.x
+            setListeners()
+        }
+        fabStartElevation = resources.getDimensionPixelSize(R.dimen.fab_elevation).toFloat()
         fabYStart = Util.getFabY(resources, VISIBLE_ITEMS_ON_START)
+        setContentView(contentView)
         val appBarMarginBottom = resources.getDimensionPixelSize(R.dimen.item_shultz_height) * VISIBLE_ITEMS_ON_START
         Util.setMargins(appBar, 0, 0, 0, appBarMarginBottom)
         vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         initShultzRecycler()
-        setListeners()
     }
 
     private fun setListeners() {
         var currentShultzIndex = 0
+        val tvMapFlyDistance = resources.displayMetrics.widthPixels / 2 - tvMap.layout.width
 
         appBar.addOnOffsetChangedListener { appBar, offset ->
             val collapsedPercent = Math.abs(offset.toFloat() / appBar.totalScrollRange)
@@ -57,7 +62,8 @@ class MainActivity : LocationActivity(), PushNotificationListener {
             if (fabZFactor < 0.2f) fabZFactor = 0f
             fabShultz.tag = if (fabZFactor == 0f) TouchState.UNTOUCHABLE else TouchState.TOUCHABLE
             fabShultz.compatElevation = fabStartElevation * fabZFactor
-            flShultz.y = (fabYStart - (offset / 2)).toFloat()
+            flShultz.y = (fabYStart - (offset / 2))
+            tvMap.x = tvMapXStart + tvMapFlyDistance * (1 - delta * delta)
         }
 
         fabShultz.setInTouchListener({
@@ -90,7 +96,7 @@ class MainActivity : LocationActivity(), PushNotificationListener {
                         .response { _, _, result ->
                             result.fold({
                                 val currentDate = Date()
-                                val date = SimpleDateFormat(getString(R.string.shultz_time_format), Locale.getDefault()).format(currentDate)
+                                val date = SimpleDateFormat(getString(R.string.shultz_time_format), Util.getCurrentLocale(this)).format(currentDate)
                                 val shultzInfoEntity = ShultzInfoEntity(currentDate.time.toString(), Common.sharedPreferences.userName,
                                         shultzEntity.power, date, shultzEntity.location)
                                 onNewShultz.invoke(shultzInfoEntity)

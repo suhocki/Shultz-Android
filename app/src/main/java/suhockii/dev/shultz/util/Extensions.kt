@@ -19,6 +19,7 @@ import android.support.v7.widget.LinearLayoutManager
 import android.support.v7.widget.RecyclerView
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewTreeObserver
 import android.view.animation.Animation
 import android.view.animation.DecelerateInterpolator
 import android.view.inputmethod.InputMethodManager
@@ -121,13 +122,14 @@ fun ProgressBar.animateProgressTo(progressTo: Int): ObjectAnimator {
 fun View.setInTouchListener(inTouch: () -> Unit, released: () -> Unit) {
     tag = TouchState.TOUCHABLE
     setOnTouchListener { _, motionEvent ->
+        if (tag == TouchState.UNTOUCHABLE) return@setOnTouchListener true
         when (motionEvent.action) {
-            MotionEvent.ACTION_DOWN -> if (tag == TouchState.TOUCHABLE) inTouch.invoke()
+            MotionEvent.ACTION_DOWN -> inTouch.invoke()
             MotionEvent.ACTION_UP -> {
                 performClick()
-                if (tag == TouchState.TOUCHABLE) released.invoke()
+                released.invoke()
             }
-            MotionEvent.ACTION_CANCEL -> if (tag == TouchState.TOUCHABLE) released.invoke()
+            MotionEvent.ACTION_CANCEL -> released.invoke()
         }
         return@setOnTouchListener true
     }
@@ -259,3 +261,12 @@ fun RecyclerView.setPagination(visibleThreshold: Int, onLoadMore: (offset: Int) 
 }
 
 enum class PaginationState { BUSY, FREE }
+
+fun View.onViewShown(onViewShown: () -> Unit) {
+    var listener: ViewTreeObserver.OnGlobalLayoutListener? = null
+    listener = ViewTreeObserver.OnGlobalLayoutListener {
+        this.viewTreeObserver.removeOnGlobalLayoutListener(listener)
+        onViewShown.invoke()
+    }
+    this.viewTreeObserver.addOnGlobalLayoutListener(listener)
+}
