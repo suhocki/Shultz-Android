@@ -27,12 +27,12 @@ object Util {
         return displayMetrics.heightPixels / itemHeight * 3 / 2
     }
 
-    fun getFabY(resources: Resources, visibleCount: Int): Float {
+    fun getFabY(resources: Resources, visibleCount: Float): Float {
         val displayMetrics = resources.displayMetrics
         val itemHeight = resources.getDimensionPixelSize(R.dimen.item_shultz_height)
         val fabHeight = resources.getDimensionPixelSize(R.dimen.fab_width)
         val containerHeight = displayMetrics.heightPixels - itemHeight * visibleCount
-        return ((containerHeight - fabHeight) / 2 - resources.getDimensionPixelSize(R.dimen.fab_offset)).toFloat()
+        return ((containerHeight - fabHeight) / 2 - resources.getDimensionPixelSize(R.dimen.fab_offset))
     }
 
     fun setMargins(v: View, l: Int, t: Int, r: Int, b: Int) {

@@ -14,4 +14,6 @@
     <string name="login">Login</string>
     <string name="password">Password</string>
     <string name="map">Map</string>
+    <string name="list">List</string>
+    <string name="title_activity_maps">Map</string>
 </resources>

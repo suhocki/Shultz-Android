@@ -11,6 +11,7 @@ import android.widget.LinearLayout
 import com.github.kittinunf.fuel.core.FuelError
 import com.github.kittinunf.fuel.httpPost
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.activity_main.view.*
 import kotlinx.coroutines.experimental.Deferred
 import kotlinx.coroutines.experimental.async
 import kotlinx.coroutines.experimental.delay
@@ -25,8 +26,7 @@ import java.util.*
 import kotlin.collections.ArrayList
 
 
-class MainActivity : LocationActivity(), PushNotificationListener {
-
+class MainActivity : MapActivity(), PushNotificationListener {
     private lateinit var progressDeferred: Deferred<Unit>
     private lateinit var vibrator: Vibrator
     private lateinit var shultzListUnit: () -> Unit
@@ -39,15 +39,13 @@ class MainActivity : LocationActivity(), PushNotificationListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val contentView = layoutInflater.inflate(R.layout.activity_main, null)
-        contentView.onViewShown {
-            tvMapXStart = tvMap.x
-            setListeners()
-        }
+        contentView.onViewShown { tvMapXStart = tvMap.x; setListeners() }
+        initMapView(savedInstanceState, contentView.mapView)
         fabStartElevation = resources.getDimensionPixelSize(R.dimen.fab_elevation).toFloat()
         fabYStart = Util.getFabY(resources, VISIBLE_ITEMS_ON_START)
         setContentView(contentView)
         val appBarMarginBottom = resources.getDimensionPixelSize(R.dimen.item_shultz_height) * VISIBLE_ITEMS_ON_START
-        Util.setMargins(appBar, 0, 0, 0, appBarMarginBottom)
+        Util.setMargins(appBar, 0, 0, 0, appBarMarginBottom.toInt())
         vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         listAll = savedInstanceState?.getParcelableArrayList(INSTANCE_STATE_LIST_ALL) ?: listAll
         val adapter = ShultzRecyclerAdapter(listAll, View.OnClickListener { shultzListUnit.invoke() })
@@ -139,9 +137,10 @@ class MainActivity : LocationActivity(), PushNotificationListener {
                         progressBarCircle.animateProgressTo(index * 100 / Common.shultzTypes.size)
                                 .withEndAction { if (progressDeferred.isCancelled) progressBarCircle.progress = 0 }
                     }
-                    delay(PROGRESS_TICK_DURATION)
-                    currentShultzIndex = if (index in 0 until Common.shultzTypes.size) index else Common.shultzTypes.size - 1
+                    delay(PROGRESS_TICK_DURATION / 2)
                     if (vibrator.hasVibrator()) vibrator.vibrate(progressBarCircle.progress.toLong())
+                    delay(PROGRESS_TICK_DURATION / 2)
+                    currentShultzIndex = if (index in 0 until Common.shultzTypes.size) index else Common.shultzTypes.size - 1
                 }
             }
         }, {
@@ -167,6 +166,36 @@ class MainActivity : LocationActivity(), PushNotificationListener {
                                 onHttpError(it.response.data)
                             })
                         }
+            }
+        }
+
+        var appBarCollapsed = false
+        var appBarWasCollapsed = false
+
+        appBar.addCollapsingListener { appBarCollapsed = it }
+
+        tvMap.setOnClickListener {
+            recyclerView.stopScroll()
+            if (tvMap.text.toString() == getString(R.string.map)) {
+                appBarWasCollapsed = appBarCollapsed
+                tvMap.text = getString(R.string.list)
+                appBar.setExpanded(false)
+                recyclerView.animate()
+                        .translationY(recyclerView.y)
+                        .alpha(0f)
+                        .withEndAction { recyclerView.visibility = View.INVISIBLE }
+                        .duration = 200
+            } else {
+                val layoutManager = recyclerView.layoutManager as LinearLayoutManager
+                if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0 && !appBarWasCollapsed) {
+                    appBar.setExpanded(true)
+                }
+                tvMap.text = getString(R.string.map)
+                recyclerView.visibility = View.VISIBLE
+                recyclerView.animate()
+                        .translationY(0f)
+                        .alpha(1f)
+                        .duration = 200
             }
         }
     }
@@ -216,7 +245,7 @@ class MainActivity : LocationActivity(), PushNotificationListener {
         const val PROGRESS_TICK_DURATION = 650L
         const val VIBRATION_TICK_DURATION = 35L
         const val PAGINATION_VISIBLE_THRESHOLD = 6
-        const val VISIBLE_ITEMS_ON_START = 2
+        const val VISIBLE_ITEMS_ON_START = 2f
         const val INSTANCE_STATE_LIST_ALL = "INSTANCE_STATE_LIST_ALL"
         const val INSTANCE_STATE_ALL_LOADED = "INSTANCE_STATE_ALL_LOADED"
     }
