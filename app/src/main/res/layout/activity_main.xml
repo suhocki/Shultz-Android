@@ -120,19 +120,23 @@
         android:id="@+id/progressBar"
         android:layout_width="56dp"
         android:layout_height="56dp"
+        android:alpha="0"
         android:elevation="8dp"
         android:padding="16dp"
         android:visibility="invisible"
+        tools:alpha="1"
         tools:visibility="visible" />
 
     <ImageView
         android:id="@+id/ivRestart"
         android:layout_width="56dp"
         android:layout_height="56dp"
+        android:alpha="0"
         android:elevation="8dp"
         android:padding="14dp"
         android:src="@drawable/restart"
         android:visibility="invisible"
+        tools:alpha="1"
         tools:visibility="visible" />
 
 </android.support.design.widget.CoordinatorLayout>

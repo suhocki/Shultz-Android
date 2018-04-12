@@ -2,12 +2,15 @@ package suhockii.dev.shultz.entity
 
 import android.os.Parcel
 import android.os.Parcelable
+import com.google.android.gms.maps.model.LatLng
 
 data class LocationEntity(private val latitude: Double,
                           private val longitude: Double): Parcelable {
     constructor(parcel: Parcel) : this(
             parcel.readDouble(),
             parcel.readDouble())
+
+    fun toLatLng() = LatLng(latitude, longitude)
 
     override fun writeToParcel(parcel: Parcel, flags: Int) {
         parcel.writeDouble(latitude)

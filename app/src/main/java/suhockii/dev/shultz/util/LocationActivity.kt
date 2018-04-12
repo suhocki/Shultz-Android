@@ -56,6 +56,7 @@ open class LocationActivity : PermissionActivity(), LocationListener {
                     delay(LOCATION_TIMEOUT)
                     if (timeDelta > CRITICAL_NANOS_OF_LAST_LOCATION) lastBestLocation = null
                     locationManager.removeUpdates(this@LocationActivity)
+                    toast(getString(R.string.gps_timeout))
                     runOnUiThread { onLocationReceived.invoke(lastBestLocation) }
                 }
                 if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER))

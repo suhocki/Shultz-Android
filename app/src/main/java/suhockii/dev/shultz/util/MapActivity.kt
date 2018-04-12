@@ -8,15 +8,19 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.ProgressBar
 import com.github.kittinunf.fuel.core.FuelError
+import com.github.kittinunf.fuel.core.Request
 import com.github.kittinunf.fuel.httpPost
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.MapView
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Marker
+import com.google.android.gms.maps.model.MarkerOptions
 import suhockii.dev.shultz.Common
 import suhockii.dev.shultz.R
 import suhockii.dev.shultz.entity.*
+import java.util.*
 
 
 @SuppressLint("Registered")
@@ -24,18 +28,19 @@ abstract class MapActivity : LocationActivity(), OnMapReadyCallback {
 
     private lateinit var mapView: MapView
     private lateinit var googleMap: GoogleMap
+    private lateinit var shultzListRequest: Request
     abstract var progressView: ProgressBar
     abstract var gpsButton: FloatingActionButton
     abstract var retryButton: ImageView
     private lateinit var shultzListUnit: () -> Unit
-    private var shultzList = mutableListOf<ShultzInfoEntity>()
+    private var shultzHashMap = WeakHashMap<String, Marker>()
 
     protected open fun setListeners() {
         gpsButton.setOnClickListener {
             getLocation {
-                if (it == null) { toast(getString(R.string.gps_timeout)); return@getLocation}
+                if (it == null) return@getLocation
                 val update = CameraUpdateFactory.newLatLng(LatLng(it.latitude, it.longitude))
-                this.googleMap.animateCamera(update)
+                googleMap.animateCamera(update)
             }
         }
 
@@ -70,12 +75,19 @@ abstract class MapActivity : LocationActivity(), OnMapReadyCallback {
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
+        googleMap.isIndoorEnabled = true
         this.googleMap = googleMap
-        this.googleMap.setMinZoomPreference(15f)
-        this.googleMap.moveCamera(CameraUpdateFactory.newLatLng(LatLng(40.7143528, -74.0059731)))
+
     }
 
-    protected fun onMapShown() {
+    @SuppressLint("MissingPermission")
+    protected fun onMapShow() {
+        gpsButton.show()
+        getLocation {
+            it?.let { googleMap.moveCamera(CameraUpdateFactory.newLatLng(LatLng(it.latitude, it.longitude))) }
+            googleMap.isMyLocationEnabled = true
+            googleMap.uiSettings.isMyLocationButtonEnabled = false
+        }
         val latLng = googleMap.cameraPosition.target
         val locationEntity = LocationEntity(latLng.latitude, latLng.longitude)
         val visibleRegion = googleMap.projection.visibleRegion
@@ -89,22 +101,40 @@ abstract class MapActivity : LocationActivity(), OnMapReadyCallback {
         val filterEntity = FilterEntity(FilterData(locationEntity, arrayRadius.first()))
         shultzListUnit = {
             getShultzListByCenter(filterEntity, {
+                it.forEach { shultz ->
+                    if (!shultzHashMap.containsKey(shultz.id))
+                        shultzHashMap[shultz.id] = googleMap.addMarker(MarkerOptions()
+                                .apply { position(shultz.location.toLatLng()) })
+                }
+
                 toast(it.size)
             }, {
+                toast(getString(R.string.check_internet))
                 retryButton.visibility = View.VISIBLE
+                retryButton.animate().alpha(1f)
             })
         }.apply { invoke() }
+    }
+
+    @SuppressLint("MissingPermission")
+    protected fun onMapHide() {
+        shultzListRequest.cancel()
+        googleMap.isMyLocationEnabled = false
+        retryButton.animate().alpha(0f).withEndAction { retryButton.visibility = View.INVISIBLE }
+        progressView.animate().alpha(0f).withEndAction { progressView.visibility = View.INVISIBLE }
+        gpsButton.hide()
     }
 
     private fun getShultzListByCenter(filterEntity: FilterEntity,
                                       onShultzListReceived: (data: List<ShultzInfoEntity>) -> Unit,
                                       onError: (fuelError: FuelError) -> Unit) {
         progressView.visibility = View.VISIBLE
-        getString(R.string.url_shultz_list_bycenter).httpPost()
+        progressView.animate().alpha(1f)
+        shultzListRequest = getString(R.string.url_shultz_list_bycenter).httpPost()
                 .body(Common.gson.toJson(filterEntity))
                 .header(mutableMapOf("auth" to Common.sharedPreferences.userToken!!, "Content-Type" to "application/json"))
                 .responseObject(ShultzListEntity.Deserializer()) { _, _, result ->
-                    progressView.visibility = View.INVISIBLE
+                    progressView.animate().alpha(0f).withEndAction { progressView.visibility = View.INVISIBLE }
                     result.fold({ onShultzListReceived.invoke(it) }, { onError(it) })
                 }
     }
@@ -141,5 +171,6 @@ abstract class MapActivity : LocationActivity(), OnMapReadyCallback {
 
     companion object {
         const val INSTANCE_STATE_MAP_VIEW = "INSTANCE_STATE_MAP_VIEW"
+        const val MARKER_USER_LOCATION = "MARKER_USER_LOCATION"
     }
 }

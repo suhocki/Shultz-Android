@@ -164,9 +164,7 @@ class MainActivity : MapActivity(), PushNotificationListener {
 
         fabShultz.setOnClickListener {
             getLocation {
-                if (it == null) {
-                    toast(getString(R.string.gps_timeout)); return@getLocation
-                }
+                if (it == null) return@getLocation
                 val locationEntity = LocationEntity(it.latitude, it.longitude)
                 val shultzEntity = ShultzEntity(currentShultzIndex + 1, locationEntity)
                 getString(R.string.url_shultz).httpPost()
@@ -200,11 +198,11 @@ class MainActivity : MapActivity(), PushNotificationListener {
                 recyclerView.animate()
                         .translationY(recyclerView.y)
                         .alpha(0f)
-                        .withEndAction { recyclerView.visibility = View.INVISIBLE; onMapShown() }
+                        .withEndAction { recyclerView.visibility = View.INVISIBLE; onMapShow() }
                         .duration = 200
                 gpsButton.show()
             } else {
-                gpsButton.hide()
+                onMapHide()
                 val layoutManager = recyclerView.layoutManager as LinearLayoutManager
                 if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0 && !appBarWasCollapsed) {
                     appBar.setExpanded(true, true)
