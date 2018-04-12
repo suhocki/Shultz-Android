@@ -34,8 +34,8 @@ import suhockii.dev.shultz.R
 import java.io.Serializable
 
 
-fun Context.toast(message: CharSequence): Toast = Toast
-        .makeText(this, message, Toast.LENGTH_SHORT)
+fun Context.toast(message: Any): Toast = Toast
+        .makeText(this, message.toString(), Toast.LENGTH_SHORT)
         .apply {
             show()
         }

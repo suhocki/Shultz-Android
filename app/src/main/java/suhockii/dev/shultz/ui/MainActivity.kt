@@ -3,11 +3,14 @@ package suhockii.dev.shultz.ui
 import android.content.Context
 import android.os.Bundle
 import android.os.Vibrator
+import android.support.design.widget.FloatingActionButton
 import android.support.v7.util.DiffUtil
 import android.support.v7.widget.LinearLayoutManager
 import android.support.v7.widget.RecyclerView
 import android.view.View
+import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import com.github.kittinunf.fuel.core.FuelError
 import com.github.kittinunf.fuel.httpPost
 import kotlinx.android.synthetic.main.activity_main.*
@@ -27,6 +30,9 @@ import kotlin.collections.ArrayList
 
 
 class MainActivity : MapActivity(), PushNotificationListener {
+    override lateinit var progressView: ProgressBar
+    override lateinit var gpsButton: FloatingActionButton
+    override lateinit var retryButton: ImageView
     private lateinit var progressDeferred: Deferred<Unit>
     private lateinit var vibrator: Vibrator
     private lateinit var shultzListUnit: () -> Unit
@@ -48,9 +54,12 @@ class MainActivity : MapActivity(), PushNotificationListener {
         Util.setMargins(appBar, 0, 0, 0, appBarMarginBottom.toInt())
         vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         listAll = savedInstanceState?.getParcelableArrayList(INSTANCE_STATE_LIST_ALL) ?: listAll
-        val adapter = ShultzRecyclerAdapter(listAll, View.OnClickListener { shultzListUnit.invoke() })
 
-        recyclerView.adapter = adapter
+        this.progressView = progressBar
+        this.gpsButton = fabGps
+        this.retryButton = ivRestart
+
+        recyclerView.adapter = ShultzRecyclerAdapter(listAll, View.OnClickListener { shultzListUnit.invoke() })
         recyclerView.layoutManager = LinearLayoutManager(this, LinearLayout.VERTICAL, false)
 
         val notAllLoaded = savedInstanceState == null || !savedInstanceState.getBoolean(INSTANCE_STATE_ALL_LOADED)
@@ -107,12 +116,13 @@ class MainActivity : MapActivity(), PushNotificationListener {
                     listAll.add(RetryEntity())
                     animateRecyclerContentDiff(recyclerView, listWithError, listAll, {})
                 })
-            }
-            shultzListUnit.invoke()
+            }.apply { invoke() }
         })
     }
 
-    private fun setListeners() {
+    override fun setListeners() {
+        super.setListeners()
+
         var currentShultzIndex = 0
         val tvMapFlyDistance = resources.displayMetrics.widthPixels / 2 - tvMap.layout.width
 
@@ -125,6 +135,7 @@ class MainActivity : MapActivity(), PushNotificationListener {
             fabShultz.compatElevation = fabStartElevation * fabZFactor
             flShultz.y = (fabYStart - (offset / 2))
             tvMap.x = tvMapXStart + tvMapFlyDistance * (1 - delta * delta)
+            mapView.alpha = collapsedPercent * collapsedPercent
         }
 
         fabShultz.setInTouchListener({
@@ -138,7 +149,10 @@ class MainActivity : MapActivity(), PushNotificationListener {
                                 .withEndAction { if (progressDeferred.isCancelled) progressBarCircle.progress = 0 }
                     }
                     delay(PROGRESS_TICK_DURATION / 2)
-                    if (vibrator.hasVibrator()) vibrator.vibrate(progressBarCircle.progress.toLong())
+                    if (vibrator.hasVibrator()) {
+                        val vibrationTime = progressBarCircle.progress.toLong()
+                        if (vibrationTime > 0) vibrator.vibrate(vibrationTime)
+                    }
                     delay(PROGRESS_TICK_DURATION / 2)
                     currentShultzIndex = if (index in 0 until Common.shultzTypes.size) index else Common.shultzTypes.size - 1
                 }
@@ -150,6 +164,9 @@ class MainActivity : MapActivity(), PushNotificationListener {
 
         fabShultz.setOnClickListener {
             getLocation {
+                if (it == null) {
+                    toast(getString(R.string.gps_timeout)); return@getLocation
+                }
                 val locationEntity = LocationEntity(it.latitude, it.longitude)
                 val shultzEntity = ShultzEntity(currentShultzIndex + 1, locationEntity)
                 getString(R.string.url_shultz).httpPost()
@@ -179,23 +196,24 @@ class MainActivity : MapActivity(), PushNotificationListener {
             if (tvMap.text.toString() == getString(R.string.map)) {
                 appBarWasCollapsed = appBarCollapsed
                 tvMap.text = getString(R.string.list)
-                appBar.setExpanded(false)
+                appBar.setExpanded(false, true)
                 recyclerView.animate()
                         .translationY(recyclerView.y)
                         .alpha(0f)
-                        .withEndAction { recyclerView.visibility = View.INVISIBLE }
+                        .withEndAction { recyclerView.visibility = View.INVISIBLE; onMapShown() }
                         .duration = 200
+                gpsButton.show()
             } else {
+                gpsButton.hide()
                 val layoutManager = recyclerView.layoutManager as LinearLayoutManager
                 if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0 && !appBarWasCollapsed) {
-                    appBar.setExpanded(true)
+                    appBar.setExpanded(true, true)
                 }
                 tvMap.text = getString(R.string.map)
                 recyclerView.visibility = View.VISIBLE
                 recyclerView.animate()
                         .translationY(0f)
                         .alpha(1f)
-                        .duration = 200
             }
         }
     }
@@ -229,7 +247,7 @@ class MainActivity : MapActivity(), PushNotificationListener {
                               onShultzListReceived: (data: List<ShultzInfoEntity>) -> Unit,
                               onError: (fuelError: FuelError) -> Unit) {
         getString(R.string.url_shultz_list).httpPost()
-                .body(Common.gson.toJson(ShultzListRequest(FilterEntity(offset, limit))))
+                .body(Common.gson.toJson(ShultzListRequest(PaginationEntity(offset, limit))))
                 .header(mutableMapOf("auth" to Common.sharedPreferences.userToken!!, "Content-Type" to "application/json"))
                 .responseObject(ShultzListEntity.Deserializer()) { _, _, result ->
                     result.fold({ onShultzListReceived.invoke(it) }, { onError(it) })

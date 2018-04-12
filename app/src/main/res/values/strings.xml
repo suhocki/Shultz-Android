@@ -16,4 +16,5 @@
     <string name="map">Map</string>
     <string name="list">List</string>
     <string name="title_activity_maps">Map</string>
+    <string name="gps_timeout">GPS timeout</string>
 </resources>

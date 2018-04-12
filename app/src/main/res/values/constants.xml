@@ -20,4 +20,5 @@
     <string name="url_init">init/</string>
     <string name="url_shultz">shultz/</string>
     <string name="url_shultz_list">shultz-list/</string>
+    <string name="url_shultz_list_bycenter">shultz-list-bycenter/</string>
 </resources>

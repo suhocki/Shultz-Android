@@ -94,11 +94,45 @@
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/fabGps"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginBottom="20dp"
+        android:layout_marginEnd="13dp"
+        android:src="@drawable/ic_gps"
+        android:visibility="invisible"
+        app:backgroundTint="@color/colorPrimary"
+        app:fabSize="normal"
+        app:rippleColor="@color/colorPrimaryDark"
+        app:useCompatPadding="true"
+        tools:visibility="visible" />
+
     <android.support.v7.widget.RecyclerView
         android:id="@+id/recyclerView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@color/colorPrimary"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:elevation="8dp"
+        android:padding="16dp"
+        android:visibility="invisible"
+        tools:visibility="visible" />
+
+    <ImageView
+        android:id="@+id/ivRestart"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:elevation="8dp"
+        android:padding="14dp"
+        android:src="@drawable/restart"
+        android:visibility="invisible"
+        tools:visibility="visible" />
 
 </android.support.design.widget.CoordinatorLayout>
