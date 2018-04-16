@@ -3,11 +3,10 @@ package suhockii.dev.shultz.ui
 import android.content.Context
 import android.os.Bundle
 import android.os.Vibrator
-import android.support.design.widget.FloatingActionButton
-import android.support.v7.util.DiffUtil
 import android.support.v7.widget.LinearLayoutManager
-import android.support.v7.widget.RecyclerView
+import android.view.Gravity
 import android.view.View
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -31,7 +30,6 @@ import kotlin.collections.ArrayList
 
 class MainActivity : MapActivity(), PushNotificationListener {
     override lateinit var progressView: ProgressBar
-    override lateinit var gpsButton: FloatingActionButton
     override lateinit var retryButton: ImageView
     private lateinit var progressDeferred: Deferred<Unit>
     private lateinit var vibrator: Vibrator
@@ -39,13 +37,12 @@ class MainActivity : MapActivity(), PushNotificationListener {
     private lateinit var onNewShultz: (ShultzInfoEntity) -> Unit
     private var fabStartElevation: Float = 0f
     private var fabYStart: Float = 0f
-    private var tvMapXStart: Float = 0f
     private var listAll = ArrayList<BaseEntity>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val contentView = layoutInflater.inflate(R.layout.activity_main, null)
-        contentView.onViewShown { tvMapXStart = tvMap.x; setListeners() }
+        contentView.onViewShown { setListeners() }
         initMapView(savedInstanceState, contentView.mapView)
         fabStartElevation = resources.getDimensionPixelSize(R.dimen.fab_elevation).toFloat()
         fabYStart = Util.getFabY(resources, VISIBLE_ITEMS_ON_START)
@@ -56,24 +53,22 @@ class MainActivity : MapActivity(), PushNotificationListener {
         listAll = savedInstanceState?.getParcelableArrayList(INSTANCE_STATE_LIST_ALL) ?: listAll
 
         this.progressView = progressBar
-        this.gpsButton = fabGps
         this.retryButton = ivRestart
 
-        recyclerView.adapter = ShultzRecyclerAdapter(listAll, View.OnClickListener { shultzListUnit.invoke() })
+        val adapter = ShultzRecyclerAdapter(View.OnClickListener { shultzListUnit.invoke() })
+        recyclerView.adapter = adapter
         recyclerView.layoutManager = LinearLayoutManager(this, LinearLayout.VERTICAL, false)
 
         val notAllLoaded = savedInstanceState == null || !savedInstanceState.getBoolean(INSTANCE_STATE_ALL_LOADED)
-        if (notAllLoaded) initPagination() else recyclerView.tag = PaginationState.ALL_LOADED
+        if (notAllLoaded) initPagination(adapter) else recyclerView.tag = PaginationState.ALL_LOADED
 
         onNewShultz = {
-            val oldList = mutableListOf<BaseEntity>().apply { addAll(listAll) }
             listAll.add(0, it)
-            animateRecyclerContentDiff(recyclerView, oldList, listAll, {
+            adapter.submitList(listAll, {
                 val layoutManager = recyclerView.layoutManager as LinearLayoutManager
                 if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0) {
                     layoutManager.scrollToPosition(0)
                 }
-                recyclerView.tag = PaginationState.FREE
             })
         }
     }
@@ -84,37 +79,31 @@ class MainActivity : MapActivity(), PushNotificationListener {
         outState.putBoolean(INSTANCE_STATE_ALL_LOADED, recyclerView.tag == PaginationState.ALL_LOADED)
     }
 
-    private fun initPagination() {
+    private fun initPagination(adapter: ShultzRecyclerAdapter) {
         val pageSize = Util.getPageSize(resources)
         recyclerView.setPagination(PAGINATION_VISIBLE_THRESHOLD, { offset ->
             shultzListUnit = {
-                val listWithLoading = mutableListOf<BaseEntity>()
-                listWithLoading.addAll(listAll)
                 if (listAll.lastOrNull() is RetryEntity) listAll.removeAt(listAll.lastIndex)
                 listAll.add(LoadingEntity())
-                animateRecyclerContentDiff(recyclerView, listWithLoading, listAll, {})
+                adapter.submitList(listAll)
 
-                getShultzList(offset, recyclerView.adapter.itemCount + pageSize * 2, { shultzList ->
+                val limit = offset + pageSize * 2
+                getShultzList(offset, limit, { shultzList ->
                     Util.formatDate(this, shultzList)
                     if (shultzList.isEmpty()) {
                         recyclerView.clearOnScrollListeners()
                         recyclerView.tag = PaginationState.ALL_LOADED
                     }
-                    val listWithShultz = mutableListOf<BaseEntity>()
-                    listWithShultz.addAll(listAll)
                     if (listAll.lastOrNull() is LoadingEntity) listAll.removeAt(listAll.lastIndex)
                     listAll.addAll(shultzList)
-                    animateRecyclerContentDiff(recyclerView, listWithShultz, listAll, {
-                        if (recyclerView.tag != PaginationState.ALL_LOADED)
-                            recyclerView.tag = PaginationState.FREE
+                    adapter.submitList(listAll, {
+                        if (recyclerView.tag != PaginationState.ALL_LOADED) recyclerView.tag = PaginationState.FREE
                     })
                 }, { error ->
                     onHttpError(error.response.data)
-                    val listWithError = mutableListOf<BaseEntity>()
-                    listWithError.addAll(listAll)
                     if (listAll.lastOrNull() is LoadingEntity) listAll.removeAt(listAll.lastIndex)
                     listAll.add(RetryEntity())
-                    animateRecyclerContentDiff(recyclerView, listWithError, listAll, {})
+                    adapter.submitList(listAll)
                 })
             }.apply { invoke() }
         })
@@ -124,7 +113,6 @@ class MainActivity : MapActivity(), PushNotificationListener {
         super.setListeners()
 
         var currentShultzIndex = 0
-        val tvMapFlyDistance = resources.displayMetrics.widthPixels / 2 - tvMap.layout.width
 
         appBar.addOnOffsetChangedListener { appBar, offset ->
             val collapsedPercent = Math.abs(offset.toFloat() / appBar.totalScrollRange)
@@ -134,7 +122,24 @@ class MainActivity : MapActivity(), PushNotificationListener {
             fabShultz.tag = if (fabZFactor == 0f) TouchState.UNTOUCHABLE else TouchState.TOUCHABLE
             fabShultz.compatElevation = fabStartElevation * fabZFactor
             flShultz.y = (fabYStart - (offset / 2))
-            tvMap.x = tvMapXStart + tvMapFlyDistance * (1 - delta * delta)
+            val layoutParams = tvMap.layoutParams as FrameLayout.LayoutParams
+            when {
+                collapsedPercent < 0.3 -> {
+                    tvMap.visibility = View.VISIBLE
+                    layoutParams.gravity = Gravity.CENTER_HORIZONTAL
+                    tvMap.layoutParams = layoutParams
+                    tvMap.alpha = 1 - collapsedPercent / 0.3f
+                }
+                collapsedPercent in 0.3..0.9 -> {
+                    tvMap.visibility = View.INVISIBLE
+                }
+                else -> {
+                    tvMap.visibility = View.VISIBLE
+                    layoutParams.gravity = Gravity.END
+                    tvMap.layoutParams = layoutParams
+                    tvMap.alpha = 1 - (1 - collapsedPercent) / 0.1f
+                }
+            }
             mapView.alpha = collapsedPercent * collapsedPercent
         }
 
@@ -164,7 +169,6 @@ class MainActivity : MapActivity(), PushNotificationListener {
 
         fabShultz.setOnClickListener {
             getLocation {
-                if (it == null) return@getLocation
                 val locationEntity = LocationEntity(it.latitude, it.longitude)
                 val shultzEntity = ShultzEntity(currentShultzIndex + 1, locationEntity)
                 getString(R.string.url_shultz).httpPost()
@@ -200,7 +204,6 @@ class MainActivity : MapActivity(), PushNotificationListener {
                         .alpha(0f)
                         .withEndAction { recyclerView.visibility = View.INVISIBLE; onMapShow() }
                         .duration = 200
-                gpsButton.show()
             } else {
                 onMapHide()
                 val layoutManager = recyclerView.layoutManager as LinearLayoutManager
@@ -216,20 +219,6 @@ class MainActivity : MapActivity(), PushNotificationListener {
         }
     }
 
-    private fun animateRecyclerContentDiff(recyclerView: RecyclerView,
-                                           oldList: List<BaseEntity>,
-                                           newList: MutableList<BaseEntity>,
-                                           endAction: () -> Unit) {
-        async {
-            val diffUtilCallback = ShultzDiffUtilCallback(oldList, newList)
-            val diffResult = DiffUtil.calculateDiff(diffUtilCallback)
-            runOnUiThread {
-                diffResult.dispatchUpdatesTo(recyclerView.adapter)
-                endAction.invoke()
-            }
-        }
-    }
-
     private fun onHttpError(data: ByteArray) {
         if (data.isNotEmpty()) {
             val serverMessage = InputStreamReader(ByteArrayInputStream(data)).readLines().first()
@@ -238,7 +227,6 @@ class MainActivity : MapActivity(), PushNotificationListener {
             toast(getString(R.string.check_internet))
         }
     }
-
 
     private fun getShultzList(offset: Int,
                               limit: Int,
@@ -255,6 +243,11 @@ class MainActivity : MapActivity(), PushNotificationListener {
     override fun onPushNotificationReceived(shultzInfoEntity: ShultzInfoEntity) {
         onNewShultz.invoke(shultzInfoEntity)
         if (vibrator.hasVibrator()) vibrator.vibrate(VIBRATION_TICK_DURATION * shultzInfoEntity.power)
+    }
+
+    override fun onBackPressed() {
+        if (mapOpened) tvMap.performClick()
+        else super.onBackPressed()
     }
 
     companion object {

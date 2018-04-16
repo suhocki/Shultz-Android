@@ -1,0 +1,12 @@
+ext {
+    getKeystoreProperties = { keyStorePath ->
+        final keystorePropertiesFile = rootProject.file(keyStorePath)
+        final keystoreProperties = new Properties()
+        keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+        return keystoreProperties
+    }
+
+    getCredentialsFolder = { userName ->
+        "C:\\Users\\$userName\\GoogleDrive\\dev\\shultz\\credentials\\"
+    }
+}

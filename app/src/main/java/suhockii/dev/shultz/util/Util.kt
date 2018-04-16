@@ -5,6 +5,7 @@ import android.content.res.Resources
 import android.os.Build
 import android.view.View
 import android.view.ViewGroup
+import suhockii.dev.shultz.Common
 import suhockii.dev.shultz.R
 import suhockii.dev.shultz.entity.ShultzInfoEntity
 import java.text.SimpleDateFormat
@@ -64,4 +65,9 @@ object Util {
         }
     }
 
+    fun getShultzType(power: Int): String {
+        val shultzTypes = Common.shultzTypes
+        val shultzIndex = power - 1
+        return if (shultzIndex in 0..shultzTypes.size) shultzTypes[shultzIndex] else "n/a"
+    }
 }

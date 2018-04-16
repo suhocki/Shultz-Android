@@ -37,32 +37,32 @@ open class LocationActivity : PermissionActivity(), LocationListener {
     }
 
     @SuppressLint("MissingPermission")
-    protected fun getLocation(onLocationReceived: (Location?) -> Unit) {
+    protected fun getLocation(onLocationReceived: (Location) -> Unit) {
         this.onLocationReceived = onLocationReceived
         requestPermission(Manifest.permission.ACCESS_FINE_LOCATION, {
             requestGpsModule({
-                val lastGpsLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-                val lastNetworkLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-                val gpsElapsedTime = lastGpsLocation?.elapsedRealtimeNanos ?: 0L
-                val networkElapsedTime = lastNetworkLocation?.elapsedRealtimeNanos ?: 0L
-                val maxElapsedTime = Math.max(gpsElapsedTime, networkElapsedTime)
-                val timeDelta = SystemClock.elapsedRealtimeNanos() - maxElapsedTime
-                var lastBestLocation = if (maxElapsedTime == gpsElapsedTime) lastGpsLocation else lastNetworkLocation
-                if (maxElapsedTime != 0L && timeDelta < MAX_NANOS_OF_LAST_LOCATION) {
-                    onLocationReceived.invoke(lastBestLocation)
-                    return@requestGpsModule
-                }
+                var (maxElapsedTime: Long, location: Location?) = Pair<Long, Location?>(0L, null)
                 locationTimeoutDeferred = async {
                     delay(LOCATION_TIMEOUT)
-                    if (timeDelta > CRITICAL_NANOS_OF_LAST_LOCATION) lastBestLocation = null
                     locationManager.removeUpdates(this@LocationActivity)
-                    toast(getString(R.string.gps_timeout))
-                    runOnUiThread { onLocationReceived.invoke(lastBestLocation) }
+                    if (location == null) toast(getString(R.string.gps_timeout))
+                    else runOnUiThread { onLocationChanged(location!!) }
+                    return@async
                 }
-                if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER))
-                    locationManager.requestSingleUpdate(criteria, this, null)
-                if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER))
-                    locationManager.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, this, null)
+                locationManager.allProviders.forEach {
+                    if (locationManager.isProviderEnabled(it))
+                        locationManager.requestLocationUpdates(it, MAX_NANOS_OF_LAST_LOCATION, 100f, this, null)
+                    val lastKnownLocation = locationManager.getLastKnownLocation(it)
+                    if (lastKnownLocation != null && lastKnownLocation.elapsedRealtimeNanos > maxElapsedTime) {
+                        maxElapsedTime = lastKnownLocation.elapsedRealtimeNanos
+                        location = lastKnownLocation
+                    }
+                }
+                val timeDelta = SystemClock.elapsedRealtimeNanos() - maxElapsedTime
+                if (maxElapsedTime != 0L && timeDelta < MAX_NANOS_OF_LAST_LOCATION) {
+                    onLocationChanged(location!!)
+                    return@requestGpsModule
+                }
             }, {
                 toast(getString(R.string.gps_module_is_off))
             })
@@ -93,8 +93,8 @@ open class LocationActivity : PermissionActivity(), LocationListener {
     }
 
     companion object {
-        private const val MAX_NANOS_OF_LAST_LOCATION = 60000000000
+        private const val MAX_NANOS_OF_LAST_LOCATION = 60000000000 * 5L
         private const val CRITICAL_NANOS_OF_LAST_LOCATION = 60000000000 * 30
-        private const val LOCATION_TIMEOUT = 10000
+        private const val LOCATION_TIMEOUT = 3500
     }
 }

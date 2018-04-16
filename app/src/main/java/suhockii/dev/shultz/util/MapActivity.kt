@@ -1,49 +1,44 @@
 package suhockii.dev.shultz.util
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.location.Location
 import android.os.Bundle
-import android.support.design.widget.FloatingActionButton
 import android.view.View
 import android.widget.ImageView
 import android.widget.ProgressBar
 import com.github.kittinunf.fuel.core.FuelError
 import com.github.kittinunf.fuel.core.Request
 import com.github.kittinunf.fuel.httpPost
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.MapView
-import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.Marker
-import com.google.android.gms.maps.model.MarkerOptions
+import com.google.maps.android.clustering.ClusterManager
 import suhockii.dev.shultz.Common
 import suhockii.dev.shultz.R
 import suhockii.dev.shultz.entity.*
+import java.io.InterruptedIOException
+import java.net.SocketTimeoutException
 import java.util.*
 
 
 @SuppressLint("Registered")
 abstract class MapActivity : LocationActivity(), OnMapReadyCallback {
 
+    abstract var progressView: ProgressBar
+    abstract var retryButton: ImageView
     private lateinit var mapView: MapView
     private lateinit var googleMap: GoogleMap
-    private lateinit var shultzListRequest: Request
-    abstract var progressView: ProgressBar
-    abstract var gpsButton: FloatingActionButton
-    abstract var retryButton: ImageView
+    private var shultzListRequest: Request? = null
     private lateinit var shultzListUnit: () -> Unit
-    private var shultzHashMap = WeakHashMap<String, Marker>()
+    private val alreadyShowedAreas = mutableListOf<Pair<LatLng, LatLng>>()
+    private var shultzHashMap = WeakHashMap<String, ShultzInfoEntity>()
+    private var clusterManager: ClusterManager<ShultzInfoEntity>? = null
+    private var initialLatLngZoom: CameraUpdate? = null
+
+    protected var mapOpened: Boolean = false
+        get() = googleMap.isMyLocationEnabled
 
     protected open fun setListeners() {
-        gpsButton.setOnClickListener {
-            getLocation {
-                if (it == null) return@getLocation
-                val update = CameraUpdateFactory.newLatLng(LatLng(it.latitude, it.longitude))
-                googleMap.animateCamera(update)
-            }
-        }
-
         retryButton.setOnClickListener {
             retryButton.visibility = View.INVISIBLE
             shultzListUnit.invoke()
@@ -75,59 +70,94 @@ abstract class MapActivity : LocationActivity(), OnMapReadyCallback {
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
-        googleMap.isIndoorEnabled = true
-        this.googleMap = googleMap
-
+        googleMap.apply {
+            this@MapActivity.googleMap = this
+            isIndoorEnabled = true
+            uiSettings.isZoomControlsEnabled = true
+            uiSettings.isMyLocationButtonEnabled = false
+            setOnMarkerClickListener(clusterManager)
+            setOnCameraIdleListener(clusterManager)
+            setOnCameraMoveStartedListener { shultzListRequest?.cancel() }
+            setOnCameraIdleListener {
+                if (mapOpened && initialLatLngZoom != null) {
+                    val center = googleMap.cameraPosition.target
+                    val visibleRegion = googleMap.projection.visibleRegion
+                    val (newTopLeft, newBottomRight) = Pair(
+                            LatLng(visibleRegion.nearLeft.latitude, visibleRegion.nearLeft.longitude),
+                            LatLng(visibleRegion.farRight.latitude, visibleRegion.farRight.longitude))
+                    var wasLoaded = false
+                    alreadyShowedAreas.forEach { (topLeft, bottomRight) ->
+                        if (newTopLeft.latitude >= topLeft.latitude && newTopLeft.longitude >= topLeft.longitude &&
+                                newBottomRight.latitude <= bottomRight.latitude && newBottomRight.longitude <= bottomRight.longitude)
+                            wasLoaded = true
+                    }
+                    if (!wasLoaded) {
+                        alreadyShowedAreas.add(Pair(newTopLeft, newBottomRight))
+                        requestShultzListByCenter(center)
+                    }
+                }
+            }
+            clusterManager = ClusterManager(this@MapActivity, googleMap)
+        }
     }
 
     @SuppressLint("MissingPermission")
     protected fun onMapShow() {
-        gpsButton.show()
-        getLocation {
-            it?.let { googleMap.moveCamera(CameraUpdateFactory.newLatLng(LatLng(it.latitude, it.longitude))) }
-            googleMap.isMyLocationEnabled = true
-            googleMap.uiSettings.isMyLocationButtonEnabled = false
+        requestPermission(Manifest.permission.ACCESS_FINE_LOCATION, { googleMap.isMyLocationEnabled = true }, {})
+        if (initialLatLngZoom == null) {
+            getLocation {
+                initialLatLngZoom = CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 15f)
+                googleMap.moveCamera(initialLatLngZoom)
+            }
         }
-        val latLng = googleMap.cameraPosition.target
-        val locationEntity = LocationEntity(latLng.latitude, latLng.longitude)
+    }
+
+    private fun requestShultzListByCenter(center: LatLng) {
+        val locationEntity = LocationEntity(center.latitude, center.longitude)
+        val arrayDiameter = FloatArray(1)
         val visibleRegion = googleMap.projection.visibleRegion
-        val arrayRadius = FloatArray(1)
-        Location.distanceBetween(
-                visibleRegion.nearLeft.latitude,
-                visibleRegion.nearLeft.longitude,
-                visibleRegion.nearRight.latitude,
-                visibleRegion.nearRight.longitude,
-                arrayRadius)
-        val filterEntity = FilterEntity(FilterData(locationEntity, arrayRadius.first()))
+        val (topLeft, bottomRight) = Pair(
+                LatLng(visibleRegion.nearLeft.latitude, visibleRegion.nearLeft.longitude),
+                LatLng(visibleRegion.farRight.latitude, visibleRegion.farRight.longitude))
+        Location.distanceBetween(topLeft.latitude, topLeft.longitude, bottomRight.latitude, bottomRight.longitude, arrayDiameter)
+        val radius = arrayDiameter.first() / 2 / METERS_IN_KM
+        val filterEntity = FilterEntity(FilterData(locationEntity, radius))
         shultzListUnit = {
             getShultzListByCenter(filterEntity, {
+                log("getShultzListByCenter")
+                Util.formatDate(this, it)
                 it.forEach { shultz ->
-                    if (!shultzHashMap.containsKey(shultz.id))
-                        shultzHashMap[shultz.id] = googleMap.addMarker(MarkerOptions()
-                                .apply { position(shultz.location.toLatLng()) })
+                    if (!shultzHashMap.containsKey(shultz.id)) {
+                        shultzHashMap[shultz.id] = shultz
+                        clusterManager!!.addItem(shultz)
+                    }
+                    clusterManager!!.cluster()
                 }
-
                 toast(it.size)
             }, {
-                toast(getString(R.string.check_internet))
-                retryButton.visibility = View.VISIBLE
-                retryButton.animate().alpha(1f)
+                if (mapOpened) {
+                    if ((it.exception is SocketTimeoutException || it.exception !is InterruptedIOException)) {
+                        toast(getString(R.string.check_internet))
+                        retryButton.visibility = View.VISIBLE
+                        retryButton.animate().alpha(1f)
+                    }
+                }
             })
         }.apply { invoke() }
     }
 
     @SuppressLint("MissingPermission")
     protected fun onMapHide() {
-        shultzListRequest.cancel()
+        shultzListRequest?.cancel()
         googleMap.isMyLocationEnabled = false
         retryButton.animate().alpha(0f).withEndAction { retryButton.visibility = View.INVISIBLE }
         progressView.animate().alpha(0f).withEndAction { progressView.visibility = View.INVISIBLE }
-        gpsButton.hide()
     }
 
     private fun getShultzListByCenter(filterEntity: FilterEntity,
                                       onShultzListReceived: (data: List<ShultzInfoEntity>) -> Unit,
                                       onError: (fuelError: FuelError) -> Unit) {
+        retryButton.visibility = View.INVISIBLE
         progressView.visibility = View.VISIBLE
         progressView.animate().alpha(1f)
         shultzListRequest = getString(R.string.url_shultz_list_bycenter).httpPost()
@@ -171,6 +201,6 @@ abstract class MapActivity : LocationActivity(), OnMapReadyCallback {
 
     companion object {
         const val INSTANCE_STATE_MAP_VIEW = "INSTANCE_STATE_MAP_VIEW"
-        const val MARKER_USER_LOCATION = "MARKER_USER_LOCATION"
+        const val METERS_IN_KM = 1000
     }
 }

@@ -55,10 +55,6 @@ class FirebaseNotificationService : FirebaseMessagingService() {
     }
 
     private fun sendNotification(shultzInfoEntity: ShultzInfoEntity) {
-        Log.d(TAG, "sendNotification")
-        val shultzIndex = shultzInfoEntity.power - 1
-        val shultzTypes = Common.shultzTypes
-
         val intent = Intent(this, MainActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         val pendingIntent = PendingIntent.getActivity(this, 0 /* Request code */, intent,
@@ -69,7 +65,7 @@ class FirebaseNotificationService : FirebaseMessagingService() {
         val notificationBuilder = NotificationCompat.Builder(this, channelId)
                 .setSmallIcon(R.drawable.ic_stat_ic_notification)
                 .setContentTitle(shultzInfoEntity.user)
-                .setContentText(if (shultzIndex in 0..shultzTypes.size) shultzTypes[shultzIndex] else "n/a")
+                .setContentText(Util.getShultzType(shultzInfoEntity.power))
                 .setAutoCancel(true)
                 .setSound(defaultSoundUri)
                 .setContentIntent(pendingIntent)

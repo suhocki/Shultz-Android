@@ -2,7 +2,10 @@ package suhockii.dev.shultz.entity
 
 import android.os.Parcel
 import android.os.Parcelable
+import com.google.android.gms.maps.model.LatLng
 import com.google.gson.annotations.SerializedName
+import com.google.maps.android.clustering.ClusterItem
+import suhockii.dev.shultz.util.Util
 
 interface BaseEntity : Parcelable {
     val id: String
@@ -56,7 +59,19 @@ data class ShultzInfoEntity(@SerializedName("_id") override val id: String,
                             val user: String,
                             val power: Int,
                             var date: String,
-                            var location: LocationEntity) : BaseEntity {
+                            var location: LocationEntity) : BaseEntity, ClusterItem {
+    override fun getSnippet(): String {
+        return "${Util.getShultzType(power)} ($date)"
+    }
+
+    override fun getTitle(): String {
+        return user
+    }
+
+    override fun getPosition(): LatLng {
+        return location.toLatLng()
+    }
+
     constructor(parcel: Parcel) : this(
             parcel.readString(),
             parcel.readString(),
