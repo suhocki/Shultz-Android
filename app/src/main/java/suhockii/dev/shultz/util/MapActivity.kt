@@ -22,17 +22,17 @@ import java.util.*
 
 
 @SuppressLint("Registered")
-abstract class MapActivity : LocationActivity(), OnMapReadyCallback {
+abstract class MapActivity : LocationActivity(), OnMapReadyCallback, PushNotificationListener {
 
     abstract var progressView: ProgressBar
     abstract var retryButton: ImageView
     private lateinit var mapView: MapView
     private lateinit var googleMap: GoogleMap
-    private var shultzListRequest: Request? = null
+    private lateinit var clusterManager: ClusterManager<ShultzInfoEntity>
     private lateinit var shultzListUnit: () -> Unit
+    private var shultzListRequest: Request? = null
     private val alreadyShowedAreas = mutableListOf<Pair<LatLng, LatLng>>()
     private var shultzHashMap = WeakHashMap<String, ShultzInfoEntity>()
-    private var clusterManager: ClusterManager<ShultzInfoEntity>? = null
     private var initialLatLngZoom: CameraUpdate? = null
 
     protected var mapOpened: Boolean = false
@@ -72,9 +72,9 @@ abstract class MapActivity : LocationActivity(), OnMapReadyCallback {
     override fun onMapReady(googleMap: GoogleMap) {
         googleMap.apply {
             this@MapActivity.googleMap = this
+            clusterManager = ClusterManager(this@MapActivity, this)
             isIndoorEnabled = true
             uiSettings.isZoomControlsEnabled = true
-            uiSettings.isMyLocationButtonEnabled = false
             setOnMarkerClickListener(clusterManager)
             setOnCameraIdleListener(clusterManager)
             setOnCameraMoveStartedListener { shultzListRequest?.cancel() }
@@ -97,7 +97,6 @@ abstract class MapActivity : LocationActivity(), OnMapReadyCallback {
                     }
                 }
             }
-            clusterManager = ClusterManager(this@MapActivity, googleMap)
         }
     }
 
@@ -129,11 +128,10 @@ abstract class MapActivity : LocationActivity(), OnMapReadyCallback {
                 it.forEach { shultz ->
                     if (!shultzHashMap.containsKey(shultz.id)) {
                         shultzHashMap[shultz.id] = shultz
-                        clusterManager!!.addItem(shultz)
+                        clusterManager.addItem(shultz)
                     }
-                    clusterManager!!.cluster()
                 }
-                toast(it.size)
+                clusterManager.cluster()
             }, {
                 if (mapOpened) {
                     if ((it.exception is SocketTimeoutException || it.exception !is InterruptedIOException)) {
@@ -167,6 +165,11 @@ abstract class MapActivity : LocationActivity(), OnMapReadyCallback {
                     progressView.animate().alpha(0f).withEndAction { progressView.visibility = View.INVISIBLE }
                     result.fold({ onShultzListReceived.invoke(it) }, { onError(it) })
                 }
+    }
+
+    override fun onPushNotificationReceived(shultzInfoEntity: ShultzInfoEntity) {
+        clusterManager.addItem(shultzInfoEntity)
+        runOnUiThread { clusterManager.cluster() }
     }
 
     override fun onResume() {

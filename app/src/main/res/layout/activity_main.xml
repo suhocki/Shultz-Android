@@ -88,8 +88,7 @@
                     android:text="@string/map"
                     android:textAllCaps="true"
                     android:textColor="@color/common_google_signin_btn_text_light_default"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
+                    android:textSize="14sp" />
             </FrameLayout>
 
             <ImageView

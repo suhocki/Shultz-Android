@@ -29,7 +29,7 @@ import java.util.*
 import kotlin.collections.ArrayList
 
 
-class MainActivity : MapActivity(), PushNotificationListener {
+class MainActivity : MapActivity() {
     override lateinit var progressView: ProgressBar
     override lateinit var retryButton: ImageView
     private lateinit var progressDeferred: Deferred<Unit>
@@ -249,6 +249,7 @@ class MainActivity : MapActivity(), PushNotificationListener {
     }
 
     override fun onPushNotificationReceived(shultzInfoEntity: ShultzInfoEntity) {
+        super.onPushNotificationReceived(shultzInfoEntity)
         onNewShultz.invoke(shultzInfoEntity)
         if (vibrator.hasVibrator()) vibrator.vibrate(VIBRATION_TICK_DURATION * shultzInfoEntity.power)
     }
