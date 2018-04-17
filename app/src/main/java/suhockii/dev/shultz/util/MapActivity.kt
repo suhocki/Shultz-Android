@@ -102,12 +102,14 @@ abstract class MapActivity : LocationActivity(), OnMapReadyCallback, PushNotific
 
     @SuppressLint("MissingPermission")
     protected fun onMapShow() {
-        requestPermission(Manifest.permission.ACCESS_FINE_LOCATION, { googleMap.isMyLocationEnabled = true })
         if (initialLatLngZoom == null) {
             getLocation {
+                googleMap.isMyLocationEnabled = true
                 initialLatLngZoom = CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 15f)
                 googleMap.moveCamera(initialLatLngZoom)
             }
+        } else {
+            requestPermission(Manifest.permission.ACCESS_FINE_LOCATION, { googleMap.isMyLocationEnabled = true })
         }
     }
 

@@ -17,4 +17,8 @@
     <string name="list">List</string>
     <string name="title_activity_maps">Map</string>
     <string name="gps_timeout">GPS timeout</string>
+    <string name="settings">Settings</string>
+    <string name="version">Version 0.1</string>
+    <string name="logout">Logout</string>
+    <string name="settings_page_description">Currently, you can just logout \nusing this page.</string>
 </resources>

@@ -2,14 +2,10 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <item
-        android:drawable="@color/colorPrimary"/>
+    <item android:drawable="@color/colorPrimary" />
 
-    <item>
-        <bitmap
-            android:gravity="center"
-            android:mipMap="false"
-            android:src="@drawable/splash_logo"/>
-    </item>
+    <item
+        android:gravity="center"
+        android:drawable="@drawable/shultz" />
 
 </layer-list>

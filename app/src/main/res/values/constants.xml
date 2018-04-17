@@ -1,7 +1,7 @@
 <resources>
     <string name="shared_preferences_file_name">sharedPreferences</string>
     <string name="default_notification_channel_id">suhockii.dev.shultz.notifications</string>
-    <string name="default_notification_channel_name">ShultzNotifications</string>
+    <string name="default_notification_channel_name">Shultz notifications</string>
     <string name="extra_firebase_id">ShultzNotifications</string>
 
     <string name="server_path">https://shultz.herokuapp.com</string>

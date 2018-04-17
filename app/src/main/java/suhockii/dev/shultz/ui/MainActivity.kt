@@ -1,18 +1,16 @@
 package suhockii.dev.shultz.ui
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.os.Vibrator
 import android.support.v7.widget.LinearLayoutManager
-import android.view.Gravity
 import android.view.View
-import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import com.github.kittinunf.fuel.core.FuelError
 import com.github.kittinunf.fuel.httpPost
-import com.google.firebase.iid.FirebaseInstanceId
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.activity_main.view.*
 import kotlinx.coroutines.experimental.Deferred
@@ -35,42 +33,48 @@ class MainActivity : MapActivity() {
     private lateinit var progressDeferred: Deferred<Unit>
     private lateinit var vibrator: Vibrator
     private lateinit var shultzListUnit: () -> Unit
-    private lateinit var onNewShultz: (ShultzInfoEntity) -> Unit
     private var fabStartElevation: Float = 0f
     private var fabYStart: Float = 0f
     private var listAll = ArrayList<BaseEntity>()
+    private var onNewShultz: (ShultzInfoEntity) -> Unit = {
+        listAll.add(0, it)
+        (recyclerView.adapter as ShultzRecyclerAdapter).submitList(listAll, {
+            val layoutManager = recyclerView.layoutManager as LinearLayoutManager
+            if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0) {
+                layoutManager.scrollToPosition(0)
+            }
+        })
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val contentView = layoutInflater.inflate(R.layout.activity_main, null)
-        contentView.onViewShown { setListeners() }
         initMapView(savedInstanceState, contentView.mapView)
+        setContentView(contentView)
+        this.progressView = progressBar
+        this.retryButton = ivRestart
         fabStartElevation = resources.getDimensionPixelSize(R.dimen.fab_elevation).toFloat()
         fabYStart = Util.getFabY(resources, VISIBLE_ITEMS_ON_START)
-        setContentView(contentView)
         val appBarMarginBottom = resources.getDimensionPixelSize(R.dimen.item_shultz_height) * VISIBLE_ITEMS_ON_START
         Util.setMargins(appBar, 0, 0, 0, appBarMarginBottom.toInt())
         vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         listAll = savedInstanceState?.getParcelableArrayList(INSTANCE_STATE_LIST_ALL) ?: listAll
+        initAdapter(savedInstanceState)
+        setListeners()
+    }
 
-        this.progressView = progressBar
-        this.retryButton = ivRestart
-
+    private fun initAdapter(savedInstanceState: Bundle?) {
         val adapter = ShultzRecyclerAdapter(View.OnClickListener { shultzListUnit.invoke() })
+        adapter.submitList(listAll)
         recyclerView.adapter = adapter
         recyclerView.layoutManager = LinearLayoutManager(this, LinearLayout.VERTICAL, false)
-
         val notAllLoaded = savedInstanceState == null || !savedInstanceState.getBoolean(INSTANCE_STATE_ALL_LOADED)
-        if (notAllLoaded) initPagination(adapter) else recyclerView.tag = PaginationState.ALL_LOADED
-
-        onNewShultz = {
-            listAll.add(0, it)
-            adapter.submitList(listAll, {
-                val layoutManager = recyclerView.layoutManager as LinearLayoutManager
-                if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0) {
-                    layoutManager.scrollToPosition(0)
-                }
-            })
+        if (notAllLoaded) initPagination(adapter) else {
+            if (listAll.lastOrNull() is LoadingEntity) {
+                listAll.removeAt(listAll.lastIndex)
+                adapter.submitList(listAll)
+            }
+            recyclerView.tag = PaginationState.ALL_LOADED
         }
     }
 
@@ -123,30 +127,13 @@ class MainActivity : MapActivity() {
             fabShultz.tag = if (fabZFactor == 0f) TouchState.UNTOUCHABLE else TouchState.TOUCHABLE
             fabShultz.compatElevation = fabStartElevation * fabZFactor
             flShultz.y = (fabYStart - (offset / 2))
-            val layoutParams = tvMap.layoutParams as FrameLayout.LayoutParams
-            when {
-                collapsedPercent < 0.3 -> {
-                    tvMap.visibility = View.VISIBLE
-                    layoutParams.gravity = Gravity.CENTER_HORIZONTAL
-                    tvMap.layoutParams = layoutParams
-                    tvMap.alpha = 1 - collapsedPercent / 0.3f
-                }
-                collapsedPercent in 0.3..0.9 -> {
-                    tvMap.visibility = View.INVISIBLE
-                }
-                else -> {
-                    tvMap.visibility = View.VISIBLE
-                    layoutParams.gravity = Gravity.END
-                    tvMap.layoutParams = layoutParams
-                    tvMap.alpha = 1 - (1 - collapsedPercent) / 0.1f
-                }
-            }
             mapView.alpha = collapsedPercent * collapsedPercent
         }
 
         fabShultz.setInTouchListener({
             currentShultzIndex = 0
             progressBarCircle.progress = 0
+            progressBarCircle.visibility = View.VISIBLE
             progressBarCircle.animate().alpha(1f)
             progressDeferred = async {
                 for (index in 1..Common.shultzTypes.size) {
@@ -164,7 +151,7 @@ class MainActivity : MapActivity() {
                 }
             }
         }, {
-            progressBarCircle.animate().alpha(0f)
+            progressBarCircle.animate().alpha(0f).withEndAction { progressBarCircle.visibility = View.INVISIBLE }
             progressDeferred.cancel()
         })
 
@@ -194,12 +181,7 @@ class MainActivity : MapActivity() {
 
         appBar.addCollapsingListener { appBarCollapsed = it }
 
-        ivExit.setOnClickListener {
-            Common.sharedPreferences.onLogout()
-            async { FirebaseInstanceId.getInstance().deleteInstanceId() }
-            startActivity<AuthenticationActivity>()
-            finish()
-        }
+        ivSettings.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
 
         tvMap.setOnClickListener {
             recyclerView.stopScroll()
@@ -207,6 +189,7 @@ class MainActivity : MapActivity() {
                 appBarWasCollapsed = appBarCollapsed
                 tvMap.text = getString(R.string.list)
                 appBar.setExpanded(false, true)
+                ivSettings.animate().alpha(0f).withEndAction { ivSettings.visibility = View.INVISIBLE }
                 recyclerView.animate()
                         .translationY(recyclerView.y)
                         .alpha(0f)
@@ -219,6 +202,8 @@ class MainActivity : MapActivity() {
                     appBar.setExpanded(true, true)
                 }
                 tvMap.text = getString(R.string.map)
+                ivSettings.visibility = View.VISIBLE
+                ivSettings.animate().alpha(1f)
                 recyclerView.visibility = View.VISIBLE
                 recyclerView.animate()
                         .translationY(0f)

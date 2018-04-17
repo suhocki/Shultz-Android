@@ -1,3 +1,4 @@
 <resources>
     <string name="google_maps_key" templateMergeStrategy="preserve" translatable="false">AIzaSyAOGVCYW3Pi6jjxbzASXcAHB5zZjGf143M</string>
+    <string name="fabric_key" templateMergeStrategy="preserve" translatable="false">f779c23c3f096ce55675eb5a228961f2811e8fa2</string>
 </resources>

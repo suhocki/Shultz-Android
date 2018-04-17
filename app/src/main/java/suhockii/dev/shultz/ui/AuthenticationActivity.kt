@@ -1,5 +1,6 @@
 package suhockii.dev.shultz.ui
 
+import android.content.Intent
 import android.graphics.PorterDuff
 import android.os.Bundle
 import android.support.v4.content.res.ResourcesCompat
@@ -145,7 +146,7 @@ class AuthenticationActivity : AppCompatActivity(), KeyboardHeightObserver, Push
     private fun onSignInSuccess(signInResponse: SignInEntity) {
         Common.sharedPreferences.userToken = signInResponse.token
         Common.sharedPreferences.userName = loginParameters[0].second
-        startActivity<MainActivity>()
+        startActivity(Intent(this, MainActivity::class.java))
         finish()
     }
 

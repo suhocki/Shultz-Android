@@ -5,10 +5,12 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.media.RingtoneManager
+import android.graphics.Color
+import android.media.AudioAttributes
+import android.net.Uri
 import android.os.Build
+import android.os.Vibrator
 import android.support.v4.app.NotificationCompat
-import android.util.Log
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import org.json.JSONObject
@@ -21,16 +23,13 @@ import suhockii.dev.shultz.util.PushNotificationListener
 import suhockii.dev.shultz.util.Util
 
 
+
+
+
+
 class FirebaseNotificationService : FirebaseMessagingService() {
 
-    override fun onCreate() {
-        super.onCreate()
-        Log.d(TAG, "oncreate")
-    }
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
-        Log.d(TAG, "FirebaseNotificationService" + remoteMessage.from!!)
-
-        // Check if message contains a data payload.
         if (remoteMessage.data.isNotEmpty()) {
             val currentActivity = Common.activityHandler.currentActivity
             val location = Common.gson.fromJson(remoteMessage.data[KEY_LOCATION], LocationEntity::class.java)
@@ -46,12 +45,6 @@ class FirebaseNotificationService : FirebaseMessagingService() {
                 sendNotification(shultzInfoEntity)
             }
         }
-
-        // FOREGROUND
-        if (remoteMessage.notification != null) {
-
-        }
-
     }
 
     private fun sendNotification(shultzInfoEntity: ShultzInfoEntity) {
@@ -61,31 +54,37 @@ class FirebaseNotificationService : FirebaseMessagingService() {
                 PendingIntent.FLAG_ONE_SHOT)
 
         val channelId = getString(R.string.default_notification_channel_id)
-        val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val soundUri = Uri.parse("android.resource://$packageName/raw/rec_1s")
+        val vibrationPattern = LongArray(1, { (shultzInfoEntity.power * 200).toLong() })
         val notificationBuilder = NotificationCompat.Builder(this, channelId)
                 .setSmallIcon(R.drawable.ic_stat_ic_notification)
                 .setContentTitle(shultzInfoEntity.user)
                 .setContentText(Util.getShultzType(shultzInfoEntity.power))
                 .setAutoCancel(true)
-                .setSound(defaultSoundUri)
+                .setLights(Color.GREEN, 500, 500)
+                .setVibrate(vibrationPattern)
+                .setSound(soundUri)
                 .setContentIntent(pendingIntent)
+        val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        vibrator.vibrate((shultzInfoEntity.power * 200).toLong())
 
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         // Since android Oreo notification channel is needed.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(channelId,
-                    "Channel human readable title",
+                    getString(R.string.default_notification_channel_name),
                     NotificationManager.IMPORTANCE_DEFAULT)
+            val att = AudioAttributes.Builder().build()
+            channel.setSound(soundUri, att)
+            channel.enableVibration(true)
             notificationManager.createNotificationChannel(channel)
         }
 
-        notificationManager.notify(0 /* ID of notification */, notificationBuilder.build())
+        notificationManager.notify(shultzInfoEntity.id.hashCode(), notificationBuilder.build())
     }
 
     companion object {
-
-        private val TAG = "FirebaseNotification"
         private const val KEY_LOCATION = "location"
     }
 }
