@@ -63,11 +63,13 @@
                 tools:visibility="visible" />
 
             <android.support.design.widget.FloatingActionButton
+                android:scaleType="centerCrop"
                 android:id="@+id/fabShultz"
                 android:layout_width="128dp"
+                android:layout_margin="12dp"
                 android:layout_height="128dp"
                 android:layout_gravity="center"
-                android:src="@drawable/shultz"
+                android:src="@drawable/shultz_up"
                 app:backgroundTint="@color/colorPrimary"
                 app:elevation="@dimen/fab_elevation"
                 app:rippleColor="@color/colorPrimaryDark"

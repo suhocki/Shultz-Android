@@ -103,7 +103,7 @@ abstract class MapActivity : LocationActivity(), OnMapReadyCallback {
 
     @SuppressLint("MissingPermission")
     protected fun onMapShow() {
-        requestPermission(Manifest.permission.ACCESS_FINE_LOCATION, { googleMap.isMyLocationEnabled = true }, {})
+        requestPermission(Manifest.permission.ACCESS_FINE_LOCATION, { googleMap.isMyLocationEnabled = true })
         if (initialLatLngZoom == null) {
             getLocation {
                 initialLatLngZoom = CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 15f)

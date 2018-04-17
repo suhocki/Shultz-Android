@@ -72,8 +72,8 @@
 
             <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_gravity="bottom"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom">
 
                 <TextView
                     android:id="@+id/tvMap"
@@ -91,6 +91,15 @@
                     android:textSize="14sp"
                     android:textStyle="bold" />
             </FrameLayout>
+
+            <ImageView
+                android:id="@+id/ivExit"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:elevation="8dp"
+                android:rotation="180"
+                android:padding="15dp"
+                android:src="@drawable/ic_exit" />
 
         </android.support.design.widget.CollapsingToolbarLayout>
 
@@ -118,7 +127,7 @@
         android:padding="16dp"
         android:visibility="invisible"
         tools:alpha="1"
-        tools:visibility="visible" />
+        tools:visibility="invisible" />
 
     <ImageView
         android:id="@+id/ivRestart"
@@ -130,5 +139,5 @@
         android:src="@drawable/restart"
         android:visibility="invisible"
         tools:alpha="1"
-        tools:visibility="visible" />
+        tools:visibility="invisible" />
 </android.support.design.widget.CoordinatorLayout>

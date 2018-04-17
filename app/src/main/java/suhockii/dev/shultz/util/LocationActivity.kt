@@ -66,8 +66,6 @@ open class LocationActivity : PermissionActivity(), LocationListener {
             }, {
                 toast(getString(R.string.gps_module_is_off))
             })
-        }, {
-            toast(getString(R.string.location_permission_disabled))
         })
     }
 

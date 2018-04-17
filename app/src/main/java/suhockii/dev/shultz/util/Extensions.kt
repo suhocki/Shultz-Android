@@ -164,16 +164,13 @@ fun AppBarLayout.addCollapsingListener(updateState: (collapsed: Boolean) -> Unit
 }
 
 fun PermissionActivity.requestPermission(permissionName: String,
-                                         onPermissionGranted: () -> Unit,
-                                         onPermissionDenied: () -> Unit) {
+                                         onPermissionGranted: () -> Unit) {
     val permissionRequestCode = 101
     setPermissionsResultListener { requestCode, grantResults ->
         when (requestCode) {
             permissionRequestCode -> {
                 if (grantResults.isNotEmpty() && grantResults.first() == PackageManager.PERMISSION_GRANTED)
                     onPermissionGranted.invoke()
-                else
-                    onPermissionDenied.invoke()
             }
         }
     }

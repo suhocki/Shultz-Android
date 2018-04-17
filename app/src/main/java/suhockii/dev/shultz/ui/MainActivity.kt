@@ -12,6 +12,7 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import com.github.kittinunf.fuel.core.FuelError
 import com.github.kittinunf.fuel.httpPost
+import com.google.firebase.iid.FirebaseInstanceId
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.activity_main.view.*
 import kotlinx.coroutines.experimental.Deferred
@@ -192,6 +193,13 @@ class MainActivity : MapActivity(), PushNotificationListener {
         var appBarWasCollapsed = false
 
         appBar.addCollapsingListener { appBarCollapsed = it }
+
+        ivExit.setOnClickListener {
+            Common.sharedPreferences.onLogout()
+            async { FirebaseInstanceId.getInstance().deleteInstanceId() }
+            startActivity<AuthenticationActivity>()
+            finish()
+        }
 
         tvMap.setOnClickListener {
             recyclerView.stopScroll()
