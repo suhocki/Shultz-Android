@@ -32,10 +32,10 @@ import suhockii.dev.shultz.R
 
 
 fun Context.toast(message: Any): Toast = Toast
-        .makeText(this, message.toString(), Toast.LENGTH_SHORT)
-        .apply {
-            show()
-        }
+    .makeText(this, message.toString(), Toast.LENGTH_SHORT)
+    .apply {
+        show()
+    }
 
 fun Activity.closeKeyboard() {
     val view = this.currentFocus
@@ -160,16 +160,16 @@ fun LocationActivity.requestGpsModule(onGpsEnabled: () -> Unit, onGpsDisabled: (
     }
     if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
         val googleApiClient = GoogleApiClient.Builder(this)
-                .addApi(LocationServices.API)
-                .addConnectionCallbacks(object : GoogleApiClient.ConnectionCallbacks {
-                    override fun onConnected(bundle: Bundle?) {}
-                    override fun onConnectionSuspended(i: Int) {
-                        googleApiClient.connect()
-                    }
-                })
-                .addOnConnectionFailedListener { connectionResult -> toast(connectionResult.errorCode.toString()) }
-                .build()
-                .apply { connect() }
+            .addApi(LocationServices.API)
+            .addConnectionCallbacks(object : GoogleApiClient.ConnectionCallbacks {
+                override fun onConnected(bundle: Bundle?) {}
+                override fun onConnectionSuspended(i: Int) {
+                    googleApiClient.connect()
+                }
+            })
+            .addOnConnectionFailedListener { connectionResult -> toast(connectionResult.errorCode.toString()) }
+            .build()
+            .apply { connect() }
         val locationRequest = LocationRequest.create()
         with(locationRequest) {
             priority = LocationRequest.PRIORITY_HIGH_ACCURACY
@@ -178,18 +178,20 @@ fun LocationActivity.requestGpsModule(onGpsEnabled: () -> Unit, onGpsDisabled: (
         }
         @Suppress("DEPRECATION")
         LocationServices.SettingsApi
-                .checkLocationSettings(googleApiClient,
-                        LocationSettingsRequest.Builder()
-                                .addLocationRequest(locationRequest)
-                                .setAlwaysShow(true).build())
-                .setResultCallback { result1 ->
-                    val status = result1.status
-                    if (status.statusCode == LocationSettingsStatusCodes.RESOLUTION_REQUIRED) {
-                        status.startResolutionForResult(this, requestLocation)
-                    } else {
-                        onGpsEnabled.invoke()
-                    }
+            .checkLocationSettings(
+                googleApiClient,
+                LocationSettingsRequest.Builder()
+                    .addLocationRequest(locationRequest)
+                    .setAlwaysShow(true).build()
+            )
+            .setResultCallback { result1 ->
+                val status = result1.status
+                if (status.statusCode == LocationSettingsStatusCodes.RESOLUTION_REQUIRED) {
+                    status.startResolutionForResult(this, requestLocation)
+                } else {
+                    onGpsEnabled.invoke()
                 }
+            }
     } else {
         onGpsEnabled.invoke()
     }
@@ -200,7 +202,8 @@ fun RecyclerView.setPagination(visibleThreshold: Int, onLoadMore: (offset: Int) 
     addOnScrollListener(object : RecyclerView.OnScrollListener() {
         override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
             super.onScrolled(recyclerView, dx, dy)
-            val lastVisibleItemPosition = (layoutManager as LinearLayoutManager).findLastVisibleItemPosition()
+            val lastVisibleItemPosition =
+                (layoutManager as LinearLayoutManager).findLastVisibleItemPosition()
             if (tag == PaginationState.FREE && lastVisibleItemPosition + visibleThreshold >= adapter.itemCount) {
                 recyclerView.tag = PaginationState.BUSY
                 onLoadMore.invoke(adapter.itemCount)
