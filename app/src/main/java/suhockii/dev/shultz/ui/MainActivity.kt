@@ -36,14 +36,17 @@ class MainActivity : MapActivity() {
     private var fabStartElevation: Float = 0f
     private var fabYStart: Float = 0f
     private var listAll = ArrayList<BaseEntity>()
+
     private var onNewShultz: (ShultzInfoEntity) -> Unit = {
         listAll.add(0, it)
-        (recyclerView.adapter as ShultzRecyclerAdapter).submitList(listAll, {
+        (recyclerView.adapter as ShultzRecyclerAdapter).submitList(listAll) {
             val layoutManager = recyclerView.layoutManager as LinearLayoutManager
             if (layoutManager.findFirstCompletelyVisibleItemPosition() == 0) {
                 layoutManager.scrollToPosition(0)
             }
-        })
+        }
+        clusterManager.addItem(it)
+        runOnUiThread { clusterManager.cluster() }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -86,7 +89,7 @@ class MainActivity : MapActivity() {
 
     private fun initPagination(adapter: ShultzRecyclerAdapter) {
         val pageSize = Util.getPageSize(resources)
-        recyclerView.setPagination(PAGINATION_VISIBLE_THRESHOLD, { offset ->
+        recyclerView.setPagination(PAGINATION_VISIBLE_THRESHOLD) { offset ->
             shultzListUnit = {
                 if (listAll.lastOrNull() is RetryEntity) listAll.removeAt(listAll.lastIndex)
                 listAll.add(LoadingEntity())
@@ -101,9 +104,9 @@ class MainActivity : MapActivity() {
                     }
                     if (listAll.lastOrNull() is LoadingEntity) listAll.removeAt(listAll.lastIndex)
                     listAll.addAll(shultzList)
-                    adapter.submitList(listAll, {
+                    adapter.submitList(listAll) {
                         if (recyclerView.tag != PaginationState.ALL_LOADED) recyclerView.tag = PaginationState.FREE
-                    })
+                    }
                 }, { error ->
                     onHttpError(error.response.data)
                     if (listAll.lastOrNull() is LoadingEntity) listAll.removeAt(listAll.lastIndex)
@@ -111,7 +114,7 @@ class MainActivity : MapActivity() {
                     adapter.submitList(listAll)
                 })
             }.apply { invoke() }
-        })
+        }
     }
 
     override fun setListeners() {
