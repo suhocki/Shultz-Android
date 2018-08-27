@@ -21,8 +21,8 @@ android {
         applicationId "suhockii.dev.shultz"
         minSdkVersion 21
         targetSdkVersion 27
-        versionCode 1
-        versionName "0.1"
+        versionCode 3
+        versionName "0.2"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {

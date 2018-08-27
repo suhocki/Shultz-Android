@@ -1,7 +1,9 @@
 package suhockii.dev.shultz.ui
 
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.os.Vibrator
 import android.support.v7.widget.LinearLayoutManager
@@ -58,7 +60,8 @@ class MainActivity : MapActivity() {
         this.retryButton = ivRestart
         fabStartElevation = resources.getDimensionPixelSize(R.dimen.fab_elevation).toFloat()
         fabYStart = Util.getFabY(resources, VISIBLE_ITEMS_ON_START)
-        val appBarMarginBottom = resources.getDimensionPixelSize(R.dimen.item_shultz_height) * VISIBLE_ITEMS_ON_START
+        val appBarMarginBottom =
+            resources.getDimensionPixelSize(R.dimen.item_shultz_height) * VISIBLE_ITEMS_ON_START
         Util.setMargins(appBar, 0, 0, 0, appBarMarginBottom.toInt())
         vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         listAll = savedInstanceState?.getParcelableArrayList(INSTANCE_STATE_LIST_ALL) ?: listAll
@@ -66,12 +69,29 @@ class MainActivity : MapActivity() {
         setListeners()
     }
 
+    override fun onStart() {
+        super.onStart()
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val hasActiveNotifications =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+                notificationManager.activeNotifications.isNotEmpty()
+            else false
+
+        if (intent.hasExtra(EXTRA_FROM_NOTIFICATION) || hasActiveNotifications) {
+            recreate()
+        }
+    }
+
     private fun initAdapter(savedInstanceState: Bundle?) {
         val adapter = ShultzRecyclerAdapter(View.OnClickListener { shultzListUnit.invoke() })
         adapter.submitList(listAll)
         recyclerView.adapter = adapter
         recyclerView.layoutManager = LinearLayoutManager(this, LinearLayout.VERTICAL, false)
-        val notAllLoaded = savedInstanceState == null || !savedInstanceState.getBoolean(INSTANCE_STATE_ALL_LOADED)
+
+        val notAllLoaded = savedInstanceState == null ||
+                !savedInstanceState.getBoolean(INSTANCE_STATE_ALL_LOADED)
+
         if (notAllLoaded) initPagination(adapter) else {
             if (listAll.lastOrNull() is LoadingEntity) {
                 listAll.removeAt(listAll.lastIndex)
@@ -83,8 +103,22 @@ class MainActivity : MapActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putParcelableArrayList(INSTANCE_STATE_LIST_ALL, listAll)
-        outState.putBoolean(INSTANCE_STATE_ALL_LOADED, recyclerView.tag == PaginationState.ALL_LOADED)
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val hasActiveNotifications =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+                notificationManager.activeNotifications.isNotEmpty()
+            else false
+        if (intent.hasExtra(EXTRA_FROM_NOTIFICATION) || hasActiveNotifications) {
+            notificationManager.cancelAll()
+            intent.removeExtra(EXTRA_FROM_NOTIFICATION)
+        } else {
+            outState.putParcelableArrayList(INSTANCE_STATE_LIST_ALL, listAll)
+            outState.putBoolean(
+                INSTANCE_STATE_ALL_LOADED,
+                recyclerView.tag == PaginationState.ALL_LOADED
+            )
+        }
     }
 
     private fun initPagination(adapter: ShultzRecyclerAdapter) {
@@ -105,7 +139,8 @@ class MainActivity : MapActivity() {
                     if (listAll.lastOrNull() is LoadingEntity) listAll.removeAt(listAll.lastIndex)
                     listAll.addAll(shultzList)
                     adapter.submitList(listAll) {
-                        if (recyclerView.tag != PaginationState.ALL_LOADED) recyclerView.tag = PaginationState.FREE
+                        if (recyclerView.tag != PaginationState.ALL_LOADED) recyclerView.tag =
+                                PaginationState.FREE
                     }
                 }, { error ->
                     onHttpError(error.response.data)
@@ -142,7 +177,9 @@ class MainActivity : MapActivity() {
                 for (index in 1..Common.shultzTypes.size) {
                     runOnUiThread {
                         progressBarCircle.animateProgressTo(index * 100 / Common.shultzTypes.size)
-                                .withEndAction { if (progressDeferred.isCancelled) progressBarCircle.progress = 0 }
+                            .withEndAction {
+                                if (progressDeferred.isCancelled) progressBarCircle.progress = 0
+                            }
                     }
                     delay(PROGRESS_TICK_DURATION / 2)
                     if (vibrator.hasVibrator()) {
@@ -150,11 +187,13 @@ class MainActivity : MapActivity() {
                         if (vibrationTime > 0) vibrator.vibrate(vibrationTime)
                     }
                     delay(PROGRESS_TICK_DURATION / 2)
-                    currentShultzIndex = if (index in 0 until Common.shultzTypes.size) index else Common.shultzTypes.size - 1
+                    currentShultzIndex =
+                            if (index in 0 until Common.shultzTypes.size) index else Common.shultzTypes.size - 1
                 }
             }
         }, {
-            progressBarCircle.animate().alpha(0f).withEndAction { progressBarCircle.visibility = View.INVISIBLE }
+            progressBarCircle.animate().alpha(0f)
+                .withEndAction { progressBarCircle.visibility = View.INVISIBLE }
             progressDeferred.cancel()
         })
 
@@ -163,19 +202,29 @@ class MainActivity : MapActivity() {
                 val locationEntity = LocationEntity(it.latitude, it.longitude)
                 val shultzEntity = ShultzEntity(currentShultzIndex + 1, locationEntity)
                 getString(R.string.url_shultz).httpPost()
-                        .body(Common.gson.toJson(shultzEntity))
-                        .header(mutableMapOf("auth" to Common.sharedPreferences.userToken!!, "Content-Type" to "application/json"))
-                        .response { _, _, result ->
-                            result.fold({
-                                val currentDate = Date()
-                                val date = SimpleDateFormat(getString(R.string.shultz_time_format), Util.getCurrentLocale(this)).format(currentDate)
-                                val shultzInfoEntity = ShultzInfoEntity(currentDate.time.toString(), Common.sharedPreferences.userName,
-                                        shultzEntity.power, date, shultzEntity.location)
-                                onNewShultz.invoke(shultzInfoEntity)
-                            }, {
-                                onHttpError(it.response.data)
-                            })
-                        }
+                    .body(Common.gson.toJson(shultzEntity))
+                    .header(
+                        mutableMapOf(
+                            "auth" to Common.sharedPreferences.userToken!!,
+                            "Content-Type" to "application/json"
+                        )
+                    )
+                    .response { _, _, result ->
+                        result.fold({
+                            val currentDate = Date()
+                            val date = SimpleDateFormat(
+                                getString(R.string.shultz_time_format),
+                                Util.getCurrentLocale(this)
+                            ).format(currentDate)
+                            val shultzInfoEntity = ShultzInfoEntity(
+                                currentDate.time.toString(), Common.sharedPreferences.userName,
+                                shultzEntity.power, date, shultzEntity.location
+                            )
+                            onNewShultz.invoke(shultzInfoEntity)
+                        }, {
+                            onHttpError(it.response.data)
+                        })
+                    }
             }
         }
 
@@ -192,12 +241,13 @@ class MainActivity : MapActivity() {
                 appBarWasCollapsed = appBarCollapsed
                 tvMap.text = getString(R.string.list)
                 appBar.setExpanded(false, true)
-                ivSettings.animate().alpha(0f).withEndAction { ivSettings.visibility = View.INVISIBLE }
+                ivSettings.animate().alpha(0f)
+                    .withEndAction { ivSettings.visibility = View.INVISIBLE }
                 recyclerView.animate()
-                        .translationY(recyclerView.y)
-                        .alpha(0f)
-                        .withEndAction { recyclerView.visibility = View.INVISIBLE; onMapShow() }
-                        .duration = 200
+                    .translationY(recyclerView.y)
+                    .alpha(0f)
+                    .withEndAction { recyclerView.visibility = View.INVISIBLE; onMapShow() }
+                    .duration = 200
             } else {
                 onMapHide()
                 val layoutManager = recyclerView.layoutManager as LinearLayoutManager
@@ -209,8 +259,8 @@ class MainActivity : MapActivity() {
                 ivSettings.animate().alpha(1f)
                 recyclerView.visibility = View.VISIBLE
                 recyclerView.animate()
-                        .translationY(0f)
-                        .alpha(1f)
+                    .translationY(0f)
+                    .alpha(1f)
             }
         }
     }
@@ -224,16 +274,23 @@ class MainActivity : MapActivity() {
         }
     }
 
-    private fun getShultzList(offset: Int,
-                              limit: Int,
-                              onShultzListReceived: (data: List<ShultzInfoEntity>) -> Unit,
-                              onError: (fuelError: FuelError) -> Unit) {
+    private fun getShultzList(
+        offset: Int,
+        limit: Int,
+        onShultzListReceived: (data: List<ShultzInfoEntity>) -> Unit,
+        onError: (fuelError: FuelError) -> Unit
+    ) {
         getString(R.string.url_shultz_list).httpPost()
-                .body(Common.gson.toJson(ShultzListRequest(PaginationEntity(offset, limit))))
-                .header(mutableMapOf("auth" to Common.sharedPreferences.userToken!!, "Content-Type" to "application/json"))
-                .responseObject(ShultzListEntity.Deserializer()) { _, _, result ->
-                    result.fold({ onShultzListReceived.invoke(it) }, { onError(it) })
-                }
+            .body(Common.gson.toJson(ShultzListRequest(PaginationEntity(offset, limit))))
+            .header(
+                mutableMapOf(
+                    "auth" to Common.sharedPreferences.userToken!!,
+                    "Content-Type" to "application/json"
+                )
+            )
+            .responseObject(ShultzListEntity.Deserializer()) { _, _, result ->
+                result.fold({ onShultzListReceived.invoke(it) }, { onError(it) })
+            }
     }
 
     override fun onPushNotificationReceived(shultzInfoEntity: ShultzInfoEntity) {
@@ -254,6 +311,7 @@ class MainActivity : MapActivity() {
         const val VISIBLE_ITEMS_ON_START = 2f
         const val INSTANCE_STATE_LIST_ALL = "INSTANCE_STATE_LIST_ALL"
         const val INSTANCE_STATE_ALL_LOADED = "INSTANCE_STATE_ALL_LOADED"
+        const val EXTRA_FROM_NOTIFICATION = "EXTRA_FROM_NOTIFICATION"
     }
 }
 

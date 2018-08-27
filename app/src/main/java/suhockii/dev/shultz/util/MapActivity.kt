@@ -28,7 +28,7 @@ abstract class MapActivity : LocationActivity(), OnMapReadyCallback, PushNotific
     abstract var retryButton: ImageView
     private lateinit var mapView: MapView
     private lateinit var googleMap: GoogleMap
-    lateinit var clusterManager: ClusterManager<ShultzInfoEntity>
+    protected lateinit var clusterManager: ClusterManager<ShultzInfoEntity>
     private lateinit var shultzListUnit: () -> Unit
     private var shultzListRequest: Request? = null
     private val alreadyShowedAreas = mutableListOf<Pair<LatLng, LatLng>>()
