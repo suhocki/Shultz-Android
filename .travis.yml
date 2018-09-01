@@ -3,38 +3,59 @@ jdk: oraclejdk8
 sudo: true
 
 env:
-  - ANDROID_EMULATOR_API_LEVEL=19
+  global:
+    - ANDROID_API_LEVEL=27
+    - ANDROID_EMULATOR_LEVEL=21
+    - ANDROID_BUILD_TOOLS_VERSION=27.0.3
+    - ADB_INSTALL_TIMEOUT=20
+    - ANDROID_ABI=armeabi-v7a
+    - ANDROID_TAG=google_apis
+    - QEMU_AUDIO_DRV=none
 
 android:
   components:
-    - tools # to get the new `repository-11.xml`
-    - tools # to install Android SDK tools 25+, latest, cannot get more granular control than this
-    # See https://github.com/travis-ci/travis-ci/issues/6040#issuecomment-219367943 for more
-    # details.
-    - platform-tools #latest
-    - build-tools-25.0.2
-    - android-25
-    - extra-android-m2repository
+    - tools
+    - platform-tools
+    - tools
+    - build-tools-$ANDROID_BUILD_TOOLS_VERSION
+    - android-$ANDROID_API_LEVEL
+    - android-$ANDROID_EMULATOR_LEVEL
     - extra-android-support
-    - sys-img-armeabi-v7a-android-19
-  licenses:
-    - 'android-sdk-license-.+'
+    - extra-google-m2repository
+    - extra-android-m2repository
+    - sys-img-$ANDROID_ABI-google_apis-$ANDROID_EMULATOR_LEVEL
 
-before_script:
-  - echo y | android update sdk --no-ui --all --filter extra-android-m2repository
-  - echo y | android update sdk --no-ui --all --filter extra-android-support
-  - echo y | android update sdk --no-ui --all --filter "android-$ANDROID_EMULATOR_API_LEVEL"
-  - echo y | android update sdk --no-ui --all --filter build-tools-25.0.2
-  - echo y | android update sdk --no-ui --all --filter "sys-img-armeabi-v7a-android-$ANDROID_EMULATOR_API_LEVEL"
-  - echo no | android create avd --force -n test -t "android-$ANDROID_EMULATOR_API_LEVEL" --abi armeabi-v7a
-  - emulator -avd test -no-audio -no-window &
+licenses:
+  - android-sdk-preview-license-.+
+  - android-sdk-license-.+
+  - google-gdk-license-.+
+
+cache:
+  directories:
+  - "$HOME/.gradle/caches/"
+  - "$HOME/.gradle/wrapper/"
+  - "$HOME/.android/build-cache"
+
+before_install:
+  - yes | sdkmanager "cmake;3.6.4111459"
+  - wget https://dl.google.com/android/repository/android-ndk-r17-linux-x86_64.zip
+  - unzip android-ndk-r17-linux-x86_64.zip -d $HOME > /dev/null
+  - export ANDROID_NDK_HOME=$HOME/android-ndk-r17
+  - export PATH=$PATH:$ANDROID_NDK_HOME
+  - mkdir "$ANDROID_HOME/licenses" || true
+  - echo -e "\n8933bad161af4178b1185d1a37fbf41ea5269c55" > "$ANDROID_HOME/licenses/android-sdk-license"
+  - echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > "$ANDROID_HOME/licenses/android-sdk-preview-license"
 
 script:
-  - ./gradlew build lint test assembleAndroidTest -PdisablePreDex;
+  - android list targets
+  - echo no | android create avd --force -n test -t "android-"$ANDROID_EMULATOR_LEVEL --abi $ANDROID_ABI --tag $ANDROID_TAG
+  - emulator -avd test -no-window &
+  - mkdir -p build/reports
+#  - ./gradlew dependencyCheckAnalyze
+  - ./gradlew assembleDebugAndroidTest -PdisablePreDex --continue --stacktrace
   - android-wait-for-emulator
-  # Unlock the device
-  - adb shell input keyevent 82
-  # Avoid having it lock itself again.
-  - adb shell svc power stayon true
-  # Make gradle output info-level logging, so the tests do not timeout
-  - ./gradlew connectedCheck --info -PdisablePreDex;
+#  - adb shell input keyevent 82 &
+  - ./gradlew connectedDebugAndroidTest -PdisablePreDex --continue --stacktrace
+
+after_failure:
+  - cat $TRAVIS_BUILD_DIR/app/build/reports/lint-results.xml
